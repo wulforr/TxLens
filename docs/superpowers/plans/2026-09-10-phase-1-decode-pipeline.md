@@ -78,7 +78,8 @@ test/
 ### Task 1: Scaffold, tooling, CI, and a deployed shell
 
 **Files:**
-- Create: the Nuxt project, `biome.json`, `vitest.config.ts`, `.github/workflows/ci.yml`, `.gitignore`, `LICENSE`, `README.md`
+- Create: the Nuxt project, `biome.json`, `vitest.config.ts`, `.github/workflows/ci.yml`, `LICENSE`
+- Modify: `.gitignore`, `README.md`, `nuxt.config.ts`, `package.json` — the scaffold generates all four
 - Test: `test/smoke.test.ts`
 
 **Interfaces:**
@@ -90,8 +91,12 @@ test/
 Run in the repo root (the repo already contains `CLAUDE.md` and `docs/`, so scaffold in place):
 
 ```bash
-pnpm dlx nuxi@latest init . --packageManager pnpm --gitInit false --force
+pnpm dlx nuxi@latest init . -t minimal --packageManager pnpm --no-gitInit --force
 ```
+
+`-t minimal` is required: `nuxi` refuses to run without an explicit template in a
+non-interactive terminal. `--no-gitInit` is the correct negation — `--gitInit false`
+would be parsed as a boolean flag followed by a positional directory argument.
 
 Record the resolved Nuxt and Vue major versions in this plan's Tech Stack line once known. Do not assume a major version; the directory layout differs between Nuxt 3 and 4, and later tasks reference `app/` — if the scaffold produced a flat layout instead, keep the scaffold's layout and adjust paths consistently.
 
@@ -99,15 +104,22 @@ Record the resolved Nuxt and Vue major versions in this plan's Tech Stack line o
 
 ```bash
 pnpm add viem
-pnpm add -D vitest @biomejs/biome typescript vue-tsc
+pnpm add -D vitest @biomejs/biome 'typescript@^5.9' vue-tsc
 ```
+
+**Pin TypeScript below 7 deliberately.** A bare `pnpm add -D typescript` resolves to
+the 7.x native compiler, which dropped the `typescript/lib/tsc` subpath export that
+`vue-tsc` requires. The symptom is `pnpm typecheck` failing with
+`ERR_PACKAGE_PATH_NOT_EXPORTED`, which does not obviously point at the version.
 
 - [x] **Step 3: Enable TypeScript strict mode**
 
-In `nuxt.config.ts`:
+**Merge** these into the generated `nuxt.config.ts` rather than replacing the file —
+the scaffold writes a `compatibilityDate` that Nitro warns about if it goes missing.
 
 ```ts
 export default defineNuxtConfig({
+  compatibilityDate: '<keep whatever the scaffold generated>',
   typescript: { strict: true, typeCheck: false },
   nitro: { preset: 'cloudflare-pages' },
   devtools: { enabled: true },
@@ -188,7 +200,13 @@ Create `biome.json`:
 }
 ```
 
-If the installed Biome major version rejects this schema, run `pnpm biome migrate --write` and keep the result.
+On Biome 2.5 and later the `rules` block is written as `{ "preset": "recommended" }`
+instead of `{ "recommended": true }` — use that form if the schema rejects the above.
+
+**Do not blindly keep the output of `pnpm biome migrate --write`.** It rewrites
+`"recommended": true` into `"preset": "none"`, which disables every lint rule while
+still exiting 0 — a silent quality hole that looks like a passing lint step. After any
+migrate, open the file and confirm the preset is `recommended`.
 
 - [x] **Step 9: Add CI**
 
@@ -676,7 +694,7 @@ git commit -m "feat: validate chain and hash before any upstream call"
   - `interface HttpClient { getJson<T>(url: string): Promise<HttpResult<T>> }`
   - `type HttpResult<T> = { ok: true; data: T } | { ok: false; status: number | null; reason: string }`
   - `createHttpClient(options?: { timeoutMs?: number }): HttpClient`
-  - test helper `fakeHttp(routes: Record<string, unknown>): HttpClient`
+  - test helper `fakeHttp(routes: Record<string, unknown>): FakeHttpClient` — an `HttpClient` that also exposes a `calls: string[]` log
 
 Every networked module takes an `HttpClient`. This is the single reason the whole suite runs without a network.
 
@@ -802,6 +820,12 @@ git commit -m "feat: add injectable http client seam"
 ```
 
 ---
+
+> **Before starting Task 6.** `nuxt build` emits
+> `[cloudflare] Node.js compatibility is not enabled.` It is harmless while the app is
+> static, but from Task 6 onward the server routes run real logic on Cloudflare. Enable
+> the `nodejs_compat` compatibility flag in the Pages project settings when the
+> deployment is wired up, and re-check the build warning then.
 
 ### Task 6: Blockscout adapter
 
@@ -2584,3 +2608,615 @@ Expected: a JSON payload, then `400`, then `400`. If the first returns 404, the 
 git add shared/wire.ts server/api test/wire.test.ts
 git commit -m "feat: add tx api route with string-serialised wire format"
 ```
+
+---
+
+### Task 15: Presentational components
+
+**Files:**
+- Create: `app/components/ProvenanceChip.vue`, `app/components/CallRow.vue`, `app/components/CallActivity.vue`
+- Test: `test/components.test.ts`
+
+**Interfaces:**
+- Consumes: `TraceProvenance` (Task 2), `WireActivity`/`TxPayload` (Task 14), `DecodedCall` (Task 12).
+- Produces: three prop-driven components. None of them fetches anything.
+
+If the scaffold from Task 1 produced a Nuxt 3 layout with no `app/` directory, put these in `components/` instead and keep the rest of the plan's paths consistent with that choice.
+
+- [ ] **Step 1: Install component testing dependencies**
+
+```bash
+pnpm add -D @vue/test-utils happy-dom
+```
+
+- [ ] **Step 2: Write the failing test**
+
+Create `test/components.test.ts`:
+
+```ts
+// @vitest-environment happy-dom
+import { mount } from '@vue/test-utils'
+import { describe, expect, it } from 'vitest'
+import CallActivity from '~~/app/components/CallActivity.vue'
+import CallRow from '~~/app/components/CallRow.vue'
+import ProvenanceChip from '~~/app/components/ProvenanceChip.vue'
+
+describe('ProvenanceChip', () => {
+  it('names the degraded source plainly', () => {
+    const wrapper = mount(ProvenanceChip, { props: { provenance: 'logsOnly' } })
+    expect(wrapper.text()).toContain('logs only')
+    expect(wrapper.text()).toContain('no call data')
+  })
+
+  it('names the best source', () => {
+    const wrapper = mount(ProvenanceChip, { props: { provenance: 'callTracer' } })
+    expect(wrapper.text()).toContain('full trace')
+  })
+})
+
+describe('CallRow', () => {
+  const decoded = {
+    confidence: 'decoded' as const,
+    contractName: 'USDC',
+    via: null,
+    functionName: 'transfer',
+    signature: 'transfer(address,uint256)',
+    selector: '0xa9059cbb' as const,
+    args: [{ name: 'to', type: 'address', value: '0x2222222222222222222222222222222222222222' }],
+    raw: '0xa9059cbb' as const,
+  }
+
+  it('shows the function name and arguments when decoded', () => {
+    const wrapper = mount(CallRow, { props: { call: decoded } })
+    expect(wrapper.text()).toContain('transfer')
+    expect(wrapper.text()).toContain('USDC')
+    expect(wrapper.text()).toContain('to')
+  })
+
+  it('marks a signature-only result as unverified rather than showing it plainly', () => {
+    const wrapper = mount(CallRow, {
+      props: { call: { ...decoded, confidence: 'signatureOnly', args: [] } },
+    })
+    expect(wrapper.text()).toContain('signature only')
+  })
+
+  it('shows the selector and raw calldata when nothing decoded', () => {
+    const wrapper = mount(CallRow, {
+      props: { call: { ...decoded, confidence: 'raw', functionName: null, args: [] } },
+    })
+    expect(wrapper.text()).toContain('0xa9059cbb')
+  })
+
+  it('escapes a hostile contract name instead of rendering it as markup', () => {
+    const wrapper = mount(CallRow, {
+      props: { call: { ...decoded, contractName: '<img src=x onerror=alert(1)>' } },
+    })
+    expect(wrapper.html()).not.toContain('<img')
+    expect(wrapper.find('img').exists()).toBe(false)
+  })
+
+  it('truncates an absurdly long contract name', () => {
+    const wrapper = mount(CallRow, { props: { call: { ...decoded, contractName: 'A'.repeat(500) } } })
+    expect(wrapper.text()).not.toContain('A'.repeat(200))
+  })
+})
+
+describe('CallActivity', () => {
+  it('renders a flat list of internal calls', () => {
+    const wrapper = mount(CallActivity, {
+      props: {
+        activity: {
+          kind: 'flat',
+          calls: [
+            {
+              kind: 'CALL',
+              from: '0x1111111111111111111111111111111111111111',
+              to: '0x2222222222222222222222222222222222222222',
+              value: '500000000000000000',
+              error: null,
+            },
+          ],
+        },
+      },
+    })
+    expect(wrapper.findAll('[data-test="call"]')).toHaveLength(1)
+    expect(wrapper.text()).toContain('0.5')
+  })
+
+  it('says so plainly when there is no call data, rather than rendering nothing', () => {
+    const wrapper = mount(CallActivity, { props: { activity: { kind: 'none' } } })
+    expect(wrapper.text()).toContain('No internal call data')
+  })
+})
+```
+
+The escaping test is a direct check of a `CLAUDE.md` hard constraint. Do not delete it.
+
+- [ ] **Step 3: Run the test to verify it fails**
+
+Run: `pnpm vitest run test/components.test.ts`
+Expected: FAIL, cannot resolve the components.
+
+- [ ] **Step 4: Implement ProvenanceChip**
+
+Create `app/components/ProvenanceChip.vue`:
+
+```vue
+<script setup lang="ts">
+import type { TraceProvenance } from '~~/shared/types'
+
+const props = defineProps<{ provenance: TraceProvenance }>()
+
+const COPY: Record<TraceProvenance, { label: string; detail: string; tone: string }> = {
+  callTracer: { label: 'full trace', detail: 'nested call frames and per-frame gas', tone: 'good' },
+  internalTransactions: { label: 'internal transactions', detail: 'flat call list, no nesting', tone: 'partial' },
+  logsOnly: { label: 'logs only', detail: 'no call data available for this transaction', tone: 'degraded' },
+}
+
+const copy = computed(() => COPY[props.provenance])
+</script>
+
+<template>
+  <span class="chip" :data-tone="copy.tone" :title="copy.detail">
+    <span class="dot" />
+    {{ copy.label }}
+    <span class="detail">{{ copy.detail }}</span>
+  </span>
+</template>
+
+<style scoped>
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5ch;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--text-dim);
+}
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--tone); align-self: center; }
+.chip[data-tone='good'] { --tone: var(--ok); }
+.chip[data-tone='partial'] { --tone: var(--warn); }
+.chip[data-tone='degraded'] { --tone: var(--bad); }
+.detail { color: var(--text-faint); }
+</style>
+```
+
+- [ ] **Step 5: Implement CallRow**
+
+Create `app/components/CallRow.vue`:
+
+```vue
+<script setup lang="ts">
+import type { DecodedCall } from '~~/server/decode/calls'
+import { truncateAddress } from '~~/shared/address'
+
+const props = defineProps<{ call: DecodedCall }>()
+
+/** Contract-supplied strings are hostile input. Cap them. See CLAUDE.md. */
+const MAX_NAME = 64
+const safeName = computed(() => {
+  const name = props.call.contractName
+  if (!name) return null
+  return name.length > MAX_NAME ? `${name.slice(0, MAX_NAME)}…` : name
+})
+</script>
+
+<template>
+  <div class="row" :data-confidence="call.confidence">
+    <div class="head">
+      <span v-if="safeName" class="contract">{{ safeName }}</span>
+      <span v-if="call.functionName" class="fn">{{ call.functionName }}</span>
+      <code v-else-if="call.selector" class="selector">{{ call.selector }}</code>
+      <span v-if="call.confidence === 'signatureOnly'" class="flag">signature only — arguments not decoded</span>
+      <span v-else-if="call.confidence === 'raw'" class="flag">could not decode</span>
+      <span v-else-if="call.confidence === 'nativeTransfer'" class="flag">plain transfer, no calldata</span>
+    </div>
+
+    <dl v-if="call.args.length" class="args">
+      <template v-for="arg in call.args" :key="arg.name">
+        <dt>{{ arg.name }} <span class="type">{{ arg.type }}</span></dt>
+        <dd>{{ arg.type === 'address' ? truncateAddress(arg.value) : arg.value }}</dd>
+      </template>
+    </dl>
+
+    <p v-if="call.via" class="via">
+      decoded through implementation <code>{{ truncateAddress(call.via) }}</code>
+    </p>
+  </div>
+</template>
+
+<style scoped>
+.row { border: 1px solid var(--line); padding: 0.75rem 1rem; }
+.head { display: flex; flex-wrap: wrap; gap: 0.75ch; align-items: baseline; }
+.contract { color: var(--text-dim); font-size: 0.8rem; }
+.fn { font-family: var(--font-mono); color: var(--accent); }
+.selector { font-family: var(--font-mono); color: var(--text-faint); }
+.flag { font-size: 0.75rem; color: var(--warn); }
+.args { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1.5rem; margin: 0.75rem 0 0; }
+dt { font-size: 0.8rem; color: var(--text-dim); }
+.type { color: var(--text-faint); }
+dd { margin: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.via { margin: 0.5rem 0 0; font-size: 0.75rem; color: var(--text-faint); }
+.row[data-confidence='raw'] { border-left: 2px solid var(--bad); }
+.row[data-confidence='signatureOnly'] { border-left: 2px solid var(--warn); }
+</style>
+```
+
+- [ ] **Step 6: Implement CallActivity**
+
+Create `app/components/CallActivity.vue`:
+
+```vue
+<script setup lang="ts">
+import { formatEther } from 'viem'
+import type { WireActivity } from '~~/shared/wire'
+import { truncateAddress } from '~~/shared/address'
+
+defineProps<{ activity: WireActivity }>()
+
+function eth(value: string): string {
+  return `${formatEther(BigInt(value))} ETH`
+}
+</script>
+
+<template>
+  <section>
+    <ul v-if="activity.kind === 'flat'" class="list">
+      <li v-for="(call, index) in activity.calls" :key="index" data-test="call" class="call">
+        <span class="kind">{{ call.kind }}</span>
+        <code>{{ truncateAddress(call.from) }}</code>
+        <span class="arrow">→</span>
+        <code>{{ call.to ? truncateAddress(call.to) : 'contract creation' }}</code>
+        <span v-if="call.value !== '0'" class="value">{{ eth(call.value) }}</span>
+        <span v-if="call.error" class="error">{{ call.error }}</span>
+      </li>
+    </ul>
+
+    <p v-else class="empty">
+      No internal call data. This source only exposes event logs for this
+      transaction, so calls that moved no tokens are invisible here.
+    </p>
+  </section>
+</template>
+
+<style scoped>
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; background: var(--line); }
+.call {
+  display: flex; flex-wrap: wrap; gap: 1ch; align-items: baseline;
+  background: var(--bg); padding: 0.5rem 0.75rem;
+  font-family: var(--font-mono); font-size: 0.8rem; font-variant-numeric: tabular-nums;
+}
+.kind { color: var(--text-faint); min-width: 11ch; }
+.arrow { color: var(--text-faint); }
+.value { color: var(--accent); margin-left: auto; }
+.error { color: var(--bad); }
+.empty { color: var(--text-dim); font-size: 0.875rem; max-width: 60ch; }
+</style>
+```
+
+- [ ] **Step 7: Run the test to verify it passes**
+
+Run: `pnpm vitest run test/components.test.ts`
+Expected: 9 passed.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add app/components test/components.test.ts package.json pnpm-lock.yaml
+git commit -m "feat: add call activity and provenance components"
+```
+
+---
+
+### Task 16: Pages, styling, and the first real render
+
+**Files:**
+- Create: `app/assets/base.css`, `app/app.vue`, `app/pages/index.vue`, `app/pages/tx/[chain]/[hash].vue`
+- Modify: `nuxt.config.ts`
+- Test: manual verification (steps below); automated e2e arrives in phase 2
+
+**Interfaces:**
+- Consumes: `TxPayload` (Task 14), the three components (Task 15).
+- Produces: the routes `/` and `/tx/:chain/:hash`.
+
+- [ ] **Step 1: Write the base stylesheet**
+
+Create `app/assets/base.css`. Instrument-panel direction per `CLAUDE.md`: dark slate, tabular numerals, mono for hashes.
+
+```css
+:root {
+  --bg: #0d1117;
+  --bg-raised: #161b22;
+  --line: #232b36;
+  --text: #e6edf3;
+  --text-dim: #9aa7b4;
+  --text-faint: #5f6b78;
+  --accent: #a78bfa;
+  --ok: #3fb950;
+  --warn: #d29922;
+  --bad: #f85149;
+  --font-ui: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+}
+
+a { color: var(--accent); }
+code { font-family: var(--font-mono); }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+```
+
+- [ ] **Step 2: Register the stylesheet**
+
+In `nuxt.config.ts`, add `css: ['~/assets/base.css']` alongside the existing options. If the scaffold is Nuxt 3 without an `app/` directory, the path is `~/assets/base.css` relative to the project root either way — verify the file resolves by loading the dev server.
+
+- [ ] **Step 3: Write the app shell**
+
+Create `app/app.vue`:
+
+```vue
+<template>
+  <div class="shell">
+    <header>
+      <NuxtLink to="/" class="brand">TxLens</NuxtLink>
+      <span class="tagline">read-only · no wallet connection, ever</span>
+    </header>
+    <main><NuxtPage /></main>
+  </div>
+</template>
+
+<style scoped>
+.shell { max-width: 60rem; margin: 0 auto; padding: 2rem 1.25rem 6rem; }
+header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 3rem; flex-wrap: wrap; }
+.brand { font-family: var(--font-mono); font-size: 1.1rem; text-decoration: none; color: var(--text); }
+.tagline { font-size: 0.75rem; color: var(--text-faint); }
+</style>
+```
+
+- [ ] **Step 4: Write the index page**
+
+Create `app/pages/index.vue`:
+
+```vue
+<script setup lang="ts">
+const hash = ref('')
+const router = useRouter()
+const error = ref<string | null>(null)
+
+const HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/
+
+function submit() {
+  const value = hash.value.trim()
+  if (!HASH_PATTERN.test(value)) {
+    error.value = 'That does not look like a transaction hash — expected 0x followed by 64 hex characters.'
+    return
+  }
+  error.value = null
+  router.push(`/tx/ethereum/${value.toLowerCase()}`)
+}
+</script>
+
+<template>
+  <div>
+    <h1>What actually happened in this transaction?</h1>
+
+    <form @submit.prevent="submit">
+      <label for="hash" class="sr-only">Transaction hash</label>
+      <input
+        id="hash"
+        v-model="hash"
+        placeholder="0x…"
+        autocomplete="off"
+        spellcheck="false"
+        :aria-invalid="error ? 'true' : undefined"
+      >
+      <button type="submit">Decode</button>
+    </form>
+
+    <p v-if="error" class="error" role="alert">{{ error }}</p>
+
+    <p class="note">Ethereum mainnet. More chains coming.</p>
+  </div>
+</template>
+
+<style scoped>
+h1 { font-size: 1.5rem; font-weight: 500; max-width: 24ch; margin: 0 0 2rem; }
+form { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+input {
+  flex: 1 1 30rem; padding: 0.6rem 0.75rem; background: var(--bg-raised);
+  border: 1px solid var(--line); color: var(--text); font-family: var(--font-mono); font-size: 0.85rem;
+}
+button {
+  padding: 0.6rem 1.25rem; background: var(--accent); border: 0; color: #16121f;
+  font-weight: 500; cursor: pointer;
+}
+.error { color: var(--bad); font-size: 0.85rem; }
+.note { color: var(--text-faint); font-size: 0.8rem; margin-top: 2rem; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+</style>
+```
+
+- [ ] **Step 5: Write the transaction page**
+
+Create `app/pages/tx/[chain]/[hash].vue`:
+
+```vue
+<script setup lang="ts">
+import { formatEther } from 'viem'
+import type { TxPayload } from '~~/shared/wire'
+import { truncateAddress } from '~~/shared/address'
+
+const route = useRoute()
+const { chain, hash } = route.params as { chain: string; hash: string }
+
+const { data, error, pending } = await useFetch<TxPayload>(`/api/tx/${chain}/${hash}`)
+
+function eth(value: string): string {
+  return `${formatEther(BigInt(value))} ETH`
+}
+</script>
+
+<template>
+  <div>
+    <p v-if="pending">Decoding…</p>
+
+    <div v-else-if="error" class="failed" role="alert">
+      <h1>Could not decode this transaction</h1>
+      <p>{{ error.statusMessage ?? 'Something went wrong upstream.' }}</p>
+      <NuxtLink to="/">Try another hash</NuxtLink>
+    </div>
+
+    <article v-else-if="data">
+      <header class="summary">
+        <code class="hash">{{ data.hash }}</code>
+        <div class="meta">
+          <span :data-status="data.status">{{ data.status }}</span>
+          <ProvenanceChip :provenance="data.provenance" />
+        </div>
+        <p v-if="data.revertReason" class="revert">Reverted: {{ data.revertReason }}</p>
+      </header>
+
+      <dl class="facts">
+        <dt>From</dt><dd><code>{{ truncateAddress(data.from) }}</code></dd>
+        <dt>To</dt><dd><code>{{ data.to ? truncateAddress(data.to) : 'contract creation' }}</code></dd>
+        <dt>Value</dt><dd>{{ eth(data.value) }}</dd>
+        <dt>Fee</dt><dd>{{ eth(data.feeWei) }}</dd>
+        <dt>Gas used</dt><dd>{{ data.gasUsed }}</dd>
+      </dl>
+
+      <h2>Call</h2>
+      <CallRow :call="data.call" />
+
+      <h2>Internal calls</h2>
+      <CallActivity :activity="data.activity" />
+
+      <h2>Events <span class="count">{{ data.logs.length }}</span></h2>
+      <ul class="logs">
+        <li v-for="log in data.logs" :key="log.logIndex">
+          <span class="event">{{ log.eventName ?? 'unknown event' }}</span>
+          <span class="from">{{ log.contractName ?? truncateAddress(log.address) }}</span>
+          <span v-if="log.confidence === 'raw'" class="flag">could not decode</span>
+          <dl v-else class="args">
+            <template v-for="arg in log.args" :key="arg.name">
+              <dt>{{ arg.name }}</dt>
+              <dd>{{ arg.type === 'address' ? truncateAddress(arg.value) : arg.value }}</dd>
+            </template>
+          </dl>
+        </li>
+      </ul>
+    </article>
+  </div>
+</template>
+
+<style scoped>
+.summary { border-bottom: 1px solid var(--line); padding-bottom: 1rem; margin-bottom: 1.5rem; }
+.hash { font-size: 0.8rem; color: var(--text-dim); overflow-wrap: anywhere; }
+.meta { display: flex; gap: 1rem; align-items: center; margin-top: 0.75rem; flex-wrap: wrap; }
+[data-status='success'] { color: var(--ok); }
+[data-status='reverted'] { color: var(--bad); }
+.revert { color: var(--bad); font-family: var(--font-mono); font-size: 0.8rem; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 2rem; margin: 0 0 2.5rem; }
+dt { color: var(--text-dim); font-size: 0.85rem; }
+dd { margin: 0; font-family: var(--font-mono); font-size: 0.85rem; }
+h2 { font-size: 0.85rem; font-weight: 500; color: var(--text-dim); text-transform: uppercase;
+     letter-spacing: 0.08em; margin: 2.5rem 0 0.75rem; }
+.count { color: var(--text-faint); }
+.logs { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; background: var(--line); }
+.logs li { background: var(--bg); padding: 0.6rem 0.75rem; font-size: 0.8rem; }
+.event { font-family: var(--font-mono); color: var(--accent); margin-right: 1ch; }
+.from { color: var(--text-dim); }
+.flag { color: var(--warn); margin-left: 1ch; }
+.args { display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 1.5rem; margin: 0.4rem 0 0; }
+.failed h1 { font-size: 1.1rem; }
+</style>
+```
+
+- [ ] **Step 6: Verify by hand in a browser**
+
+```bash
+pnpm dev
+```
+
+Check each of these, and do not tick this step until all five hold:
+1. `/` renders, the input is focusable, and submitting junk shows the inline error rather than navigating.
+2. `/tx/ethereum/<a real hash>` renders a decoded call, internal calls, and events.
+3. A transaction against an **unverified** contract shows `could not decode` rather than a blank area.
+4. A **reverted** transaction shows the revert reason.
+5. The provenance chip reads `internal transactions` or `logs only`, and matches what the API actually returned.
+
+- [ ] **Step 7: Run the whole suite**
+
+Run: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`
+Expected: all green.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add app nuxt.config.ts
+git commit -m "feat: add index and transaction pages"
+```
+
+- [ ] **Step 9: Update the spec to match reality**
+
+Two deliberate deviations were recorded during this phase. Fold both into `docs/SPEC.md` so the spec stays the source of truth:
+
+1. **Section 4** — describe `CallActivity` as a three-way discriminated union (`tree` / `flat` / `none`), and state that Blockscout yields a flat list rather than a tree.
+2. **Section 5** — describe proxy resolution as two rungs: Blockscout's resolved `implementations` field first (keyless, available now), EIP-1967 storage-slot reading second (arrives with the keyed RPC source).
+
+```bash
+git add docs/SPEC.md
+git commit -m "docs: align spec with phase 1 call activity and proxy resolution"
+```
+
+---
+
+## Phase 1 exit criteria
+
+All of these must hold before phase 2 starts:
+
+- [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm build` passes.
+- [ ] The whole test suite runs with no network access.
+- [ ] A real mainnet transaction renders end to end on the deployed URL.
+- [ ] An unverified contract renders as undecoded rather than blank or fabricated.
+- [ ] The provenance chip reflects the actual source that answered.
+- [ ] No wallet library, no LLM SDK, and no `any` without a justifying comment.
+- [ ] `docs/SPEC.md` matches what was built.
+
+## Self-review record
+
+Checked before handing this plan to an implementer.
+
+**Spec coverage.** Spec §4 layers one and three are covered by Tasks 6–7; layer two (keyed `debug_traceTransaction`) is deferred to phase 2 and the `TxSource` interface exists for it. Spec §5's resolution ladder is Tasks 8–11, with the proxy-detection mechanism deviating deliberately and recorded in Task 10. Spec §6 (value graph), §7 (narrative), §8 (caching), and §10 items 1–2 (landing page) are phase 2 and later, listed as out of scope at the top of this plan. Spec §12's validation, rate-limit and escaping requirements are covered by Tasks 4, 15 and the route; per-IP rate limiting arrives with caching in phase 2.
+
+**Placeholders.** None. Two places intentionally require the implementer to substitute a real transaction hash they pick themselves (Task 6 Step 1, Task 14 Step 6) — the surrounding assertions do not depend on which one.
+
+**Type consistency.** `AbiResolver` exposes `forAddress` and `forSelector`, used under those names in Tasks 12 and 13. `DecodedCall.confidence` has four variants across Tasks 12, 15 and 16. `CallActivity` in the domain model has three variants; `WireActivity` deliberately has two, because no phase 1 source emits a tree, and Task 14 notes what to change when one does. `DecodedArg` is defined once in Task 12 and imported by Task 13 rather than redeclared.
+
+## Execution handoff
+
+Two options:
+
+1. **Subagent-driven (recommended)** — a fresh subagent per task, with a review between each.
+2. **Inline** — batch execution with checkpoints.
