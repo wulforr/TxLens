@@ -829,6 +829,22 @@ git commit -m "feat: add injectable http client seam"
 
 ### Task 6: Blockscout adapter
 
+> **As built — corrections found against the live API on 2026-09-10.** The field names
+> below were right, but three things were not. Read `server/sources/blockscout.ts` for
+> the truth; this task body is kept as the reasoning record.
+>
+> 1. **`revert_reason` is never a plain string.** It is `null` or an object
+>    (`{method_call, method_id, parameters[]}`), even for a plain `Error(string)` revert.
+>    Assigning it straight through put an object in a `string`-typed field, rendering as
+>    `[object Object]`. A `toRevertReason()` mapper now unwraps `Error(string)`, formats
+>    custom errors as `Name(arg, arg)`, and passes raw hex through.
+> 2. **`topics` is padded to four entries with trailing `null`s.** The fixture below has
+>    three and no nulls, so the null-filter in the implementation was never exercised by
+>    its own test. Unfiltered nulls would reach viem's decoder in Task 13.
+> 3. **Both sub-paths paginate at 50 items** via `next_page_params`. Not handled here —
+>    see Task 17, which must land before phase 2's value graph.
+
+
 **Files:**
 - Create: `server/sources/blockscout.ts`, `test/fixtures/blockscout/transfer.json`
 - Test: `test/blockscout.test.ts`
@@ -1301,7 +1317,8 @@ describe('lookupLabel', () => {
   })
 
   it('returns undefined for an unknown address', () => {
-    expect(lookupLabel(1, '0x0000000000000000000000000000000000000dead')).toBeUndefined()
+    // 40 hex characters exactly — an earlier draft used 41 and tested nothing.
+    expect(lookupLabel(1, '0x000000000000000000000000000000000000dead')).toBeUndefined()
   })
 
   it('does not match the same address on a different chain', () => {
@@ -1435,6 +1452,19 @@ git commit -m "feat: add curated address label pack"
 ---
 
 ### Task 9: Remote ABI lookups
+
+> **As built — the Sourcify design below is wrong and was replaced.** The repo URL
+> `repo.sourcify.dev/contracts/{full,partial}_match/...` 307-redirects to a path that
+> 404s with HTML. It failed *safely* — the JSON parse error surfaced as `ok: false` — so
+> rung two of the ladder would have been permanently dead with green tests and no visible
+> symptom. That is the worst failure shape there is.
+>
+> Replaced with `https://sourcify.dev/server/v2/contract/{chainId}/{address}?fields=abi`.
+> The v2 API also accepts either address casing and collapses full/partial into one
+> lookup, so **the checksumming gotcha described below no longer applies** and the
+> two-request fallback loop is gone. Lowercase is used throughout, matching the rest of
+> the codebase.
+
 
 **Files:**
 - Create: `server/abi/remote.ts`
@@ -1604,6 +1634,20 @@ git commit -m "feat: add sourcify, blockscout, and 4byte abi lookups"
 ---
 
 ### Task 10: Proxy implementation detection
+
+> **As built — two corrections, one of them severe.**
+>
+> 1. **`implementations[]` items key the address as `address_hash`, not `address`.** As
+>    written, proxy detection would have returned `null` for every proxy in production
+>    while every test passed. `address_hash` is now preferred, with `address` accepted as
+>    a legacy fallback.
+> 2. The first test below cannot pass: `impl.toUpperCase()` yields `0X2222…`, and
+>    `normaliseAddress` requires a literal lowercase `0x`, so it throws rather than
+>    returning the address. Replaced with the mixed-case form the API actually sends.
+>
+> `resolveImplementation` also now catches a `normaliseAddress` throw on a malformed
+> upstream address instead of failing the whole request.
+
 
 **Files:**
 - Create: `server/abi/proxy.ts`
@@ -3192,6 +3236,204 @@ git commit -m "docs: align spec with phase 1 call activity and proxy resolution"
 
 ---
 
+---
+
+### Task 17: Paginated logs and internal transactions
+
+**Files:**
+- Modify: `server/sources/blockscout.ts`, `shared/types.ts`, `shared/wire.ts`, `app/pages/tx/[chain]/[hash].vue`
+- Test: `test/blockscout-pagination.test.ts`
+
+**Interfaces:**
+- Produces: `interface Truncation { logs: boolean; calls: boolean }`, added to both `RawTransaction` and `TxPayload`.
+
+**Why this exists, and why it is not optional.** Blockscout pages `/logs` and
+`/internal-transactions` at 50 items and signals more with `next_page_params`. Tasks 6
+and 14 read only the first page, so any transaction with more than 50 logs silently
+decodes a fraction of itself. That breaks `CLAUDE.md` constraint 6 — value conservation —
+on exactly the large swaps and exploits this project exists to explain, and it breaks it
+*quietly*, which is worse. Phase 2's value graph cannot be trusted until this lands.
+
+The page cap is deliberate: an unbounded follow loop on a hostile transaction is a way to
+hang a request. Cap it, and when the cap is hit, **say so on screen**. A truncated result
+presented as complete is the same dishonesty as an ungrounded value shown as grounded.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `test/blockscout-pagination.test.ts`:
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { fetchPagedItems, MAX_PAGES } from '~~/server/sources/blockscout'
+import { fakeHttp } from './helpers/fakeHttp'
+
+const url = 'https://x.test/items'
+
+function page(items: number[], next: Record<string, unknown> | null) {
+  return { items: items.map((n) => ({ n })), next_page_params: next }
+}
+
+describe('fetchPagedItems', () => {
+  it('returns a single page when there is no continuation', async () => {
+    const http = fakeHttp({ [url]: page([1, 2], null) })
+    const result = await fetchPagedItems<{ n: number }>(http, url)
+    expect(result.items.map((i) => i.n)).toEqual([1, 2])
+    expect(result.truncated).toBe(false)
+    expect(http.calls).toHaveLength(1)
+  })
+
+  it('follows next_page_params and concatenates in order', async () => {
+    const http = fakeHttp({
+      [url]: page([1, 2], { index: 2 }),
+      [`${url}?index=2`]: page([3, 4], null),
+    })
+    const result = await fetchPagedItems<{ n: number }>(http, url)
+    expect(result.items.map((i) => i.n)).toEqual([1, 2, 3, 4])
+    expect(result.truncated).toBe(false)
+  })
+
+  it('encodes multiple continuation params', async () => {
+    const http = fakeHttp({
+      [url]: page([1], { index: 2, block_number: 500 }),
+      [`${url}?index=2&block_number=500`]: page([2], null),
+    })
+    const result = await fetchPagedItems<{ n: number }>(http, url)
+    expect(result.items).toHaveLength(2)
+  })
+
+  it('stops at the page cap and reports truncation', async () => {
+    // Every page claims another page exists, forever.
+    const routes: Record<string, unknown> = { [url]: page([0], { index: 0 }) }
+    for (let i = 0; i < MAX_PAGES + 2; i++) routes[`${url}?index=${i}`] = page([i + 1], { index: i + 1 })
+    const result = await fetchPagedItems<{ n: number }>(http_(routes), url)
+    expect(result.truncated).toBe(true)
+    expect(result.items.length).toBeLessThanOrEqual(MAX_PAGES)
+  })
+
+  it('keeps what it has and reports truncation when a later page fails', async () => {
+    const http = fakeHttp({ [url]: page([1, 2], { index: 2 }) }) // page two unconfigured -> 404
+    const result = await fetchPagedItems<{ n: number }>(http, url)
+    expect(result.items.map((i) => i.n)).toEqual([1, 2])
+    expect(result.truncated).toBe(true)
+  })
+
+  it('returns empty and untruncated when the first page fails', async () => {
+    const result = await fetchPagedItems<{ n: number }>(fakeHttp({}), url)
+    expect(result.items).toEqual([])
+    expect(result.truncated).toBe(false)
+  })
+})
+
+function http_(routes: Record<string, unknown>) {
+  return fakeHttp(routes)
+}
+```
+
+The last case matters: a missing first page means "no data", not "truncated data". Only a
+partial read is truncation.
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pnpm vitest run test/blockscout-pagination.test.ts`
+Expected: FAIL, `fetchPagedItems` is not exported.
+
+- [ ] **Step 3: Implement the pager**
+
+Add to `server/sources/blockscout.ts`:
+
+```ts
+/** 20 pages at 50 items is 1000 records — beyond that, the diagram is unreadable anyway. */
+export const MAX_PAGES = 20
+
+interface PagedResponse<T> {
+  items: T[]
+  next_page_params: Record<string, unknown> | null
+}
+
+export interface PagedResult<T> {
+  items: T[]
+  truncated: boolean
+}
+
+export async function fetchPagedItems<T>(http: HttpClient, url: string): Promise<PagedResult<T>> {
+  const items: T[] = []
+  let query = ''
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const result = await http.getJson<PagedResponse<T>>(`${url}${query}`)
+
+    if (!result.ok) {
+      // A first-page failure is "no data". A later failure is a partial read,
+      // and the difference must survive to the UI.
+      return { items, truncated: page > 0 }
+    }
+
+    items.push(...result.data.items)
+
+    const next = result.data.next_page_params
+    if (!next) return { items, truncated: false }
+
+    query = `?${new URLSearchParams(
+      Object.entries(next).map(([key, value]) => [key, String(value)]),
+    ).toString()}`
+  }
+
+  return { items, truncated: true }
+}
+```
+
+- [ ] **Step 4: Use it in the adapter**
+
+In `fetchFromBlockscout`, replace both single `getJson` calls to `/logs` and
+`/internal-transactions` with `fetchPagedItems`, and carry the two truncation flags into
+the returned `RawTransaction`. Add to `shared/types.ts`:
+
+```ts
+export interface Truncation {
+  logs: boolean
+  calls: boolean
+}
+```
+
+and add `truncated: Truncation` to `RawTransaction`. Update the existing Task 6 tests'
+fixtures to include `next_page_params: null`, and assert `truncated` is
+`{ logs: false, calls: false }` on the happy path.
+
+- [ ] **Step 5: Carry it to the wire and the page**
+
+Add `truncated: Truncation` to `TxPayload` and map it in `toWire`. In
+`app/pages/tx/[chain]/[hash].vue`, render a visible notice above the events list when
+`data.truncated.logs` is true:
+
+```vue
+<p v-if="data.truncated.logs" class="truncated" role="status">
+  This transaction has more events than the source will return in one read.
+  Showing the first {{ data.logs.length }}. Token flows below are incomplete.
+</p>
+```
+
+Style it with `color: var(--warn)`. Add the equivalent notice for `truncated.calls` above
+the internal calls section.
+
+- [ ] **Step 6: Run the full suite**
+
+Run: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`
+Expected: all green, with the Task 6 and Task 14 tests updated rather than deleted.
+
+- [ ] **Step 7: Verify against a real high-log transaction**
+
+Find a transaction with well over 50 logs — a large aggregator swap or an airdrop
+distribution — and load it locally. Confirm the event count exceeds 50, and that the
+notice appears only if the page cap was actually reached.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add server/sources/blockscout.ts shared/types.ts shared/wire.ts app/pages test
+git commit -m "fix: paginate logs and internal transactions, surface truncation"
+```
+
+
 ## Phase 1 exit criteria
 
 All of these must hold before phase 2 starts:
@@ -3202,6 +3444,7 @@ All of these must hold before phase 2 starts:
 - [ ] An unverified contract renders as undecoded rather than blank or fabricated.
 - [ ] The provenance chip reflects the actual source that answered.
 - [ ] No wallet library, no LLM SDK, and no `any` without a justifying comment.
+- [ ] A transaction with more than 50 logs decodes all of them, or says it did not.
 - [ ] `docs/SPEC.md` matches what was built.
 
 ## Self-review record
