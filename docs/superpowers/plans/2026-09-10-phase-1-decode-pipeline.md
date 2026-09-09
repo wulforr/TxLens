@@ -85,7 +85,7 @@ test/
 - Consumes: nothing.
 - Produces: a working `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`, and a live Cloudflare Pages URL.
 
-- [ ] **Step 1: Scaffold Nuxt**
+- [x] **Step 1: Scaffold Nuxt**
 
 Run in the repo root (the repo already contains `CLAUDE.md` and `docs/`, so scaffold in place):
 
@@ -95,14 +95,14 @@ pnpm dlx nuxi@latest init . --packageManager pnpm --gitInit false --force
 
 Record the resolved Nuxt and Vue major versions in this plan's Tech Stack line once known. Do not assume a major version; the directory layout differs between Nuxt 3 and 4, and later tasks reference `app/` — if the scaffold produced a flat layout instead, keep the scaffold's layout and adjust paths consistently.
 
-- [ ] **Step 2: Install dependencies**
+- [x] **Step 2: Install dependencies**
 
 ```bash
 pnpm add viem
 pnpm add -D vitest @biomejs/biome typescript vue-tsc
 ```
 
-- [ ] **Step 3: Enable TypeScript strict mode**
+- [x] **Step 3: Enable TypeScript strict mode**
 
 In `nuxt.config.ts`:
 
@@ -116,7 +116,7 @@ export default defineNuxtConfig({
 
 `typeCheck: false` keeps dev fast; CI runs `vue-tsc` separately.
 
-- [ ] **Step 4: Add vitest config**
+- [x] **Step 4: Add vitest config**
 
 Create `vitest.config.ts`:
 
@@ -137,7 +137,7 @@ export default defineConfig({
 })
 ```
 
-- [ ] **Step 5: Add scripts to package.json**
+- [x] **Step 5: Add scripts to package.json**
 
 ```json
 {
@@ -154,7 +154,7 @@ export default defineConfig({
 }
 ```
 
-- [ ] **Step 6: Write the smoke test**
+- [x] **Step 6: Write the smoke test**
 
 Create `test/smoke.test.ts`:
 
@@ -169,12 +169,12 @@ describe('toolchain', () => {
 })
 ```
 
-- [ ] **Step 7: Run the test to verify the toolchain**
+- [x] **Step 7: Run the test to verify the toolchain**
 
 Run: `pnpm test`
 Expected: 1 passed.
 
-- [ ] **Step 8: Configure Biome**
+- [x] **Step 8: Configure Biome**
 
 Create `biome.json`:
 
@@ -190,7 +190,7 @@ Create `biome.json`:
 
 If the installed Biome major version rejects this schema, run `pnpm biome migrate --write` and keep the result.
 
-- [ ] **Step 9: Add CI**
+- [x] **Step 9: Add CI**
 
 Create `.github/workflows/ci.yml`:
 
@@ -218,12 +218,12 @@ jobs:
       - run: pnpm build
 ```
 
-- [ ] **Step 10: Verify everything passes locally**
+- [x] **Step 10: Verify everything passes locally**
 
 Run: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`
 Expected: all four succeed. Fix any scaffold lint violations now rather than carrying them.
 
-- [ ] **Step 11: Write the README stub**
+- [x] **Step 11: Write the README stub**
 
 Create `README.md`:
 
@@ -256,18 +256,18 @@ pnpm lint
 MIT
 ```
 
-- [ ] **Step 12: Add MIT LICENSE**
+- [x] **Step 12: Add MIT LICENSE**
 
 Create `LICENSE` with the standard MIT text, copyright `2026 Shaurya Singh`.
 
-- [ ] **Step 13: Commit**
+- [x] **Step 13: Commit**
 
 ```bash
 git add -A
 git commit -m "chore: scaffold nuxt app with vitest, biome, and CI"
 ```
 
-- [ ] **Step 14: Deploy the shell to Cloudflare Pages**
+- [~] **Step 14: Deploy the shell to Cloudflare Pages**  <!-- SKIPPED: requires a human in the Cloudflare dashboard; still pending -->
 
 Connect the repo in the Cloudflare dashboard: build command `pnpm build`, output directory `dist`, Node 20. Push and confirm a live URL serves the default page.
 
@@ -295,7 +295,7 @@ git commit -m "docs: add live URL"
   - `normaliseAddress(value: string): Address`
   - `truncateAddress(value: string, lead?: number, tail?: number): string`
 
-- [ ] **Step 1: Write the failing test for address helpers**
+- [x] **Step 1: Write the failing test for address helpers**
 
 Create `test/address.test.ts`:
 
@@ -322,12 +322,12 @@ describe('truncateAddress', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm vitest run test/address.test.ts`
 Expected: FAIL, cannot resolve `~~/shared/address`.
 
-- [ ] **Step 3: Implement the address helpers**
+- [x] **Step 3: Implement the address helpers**
 
 Create `shared/address.ts`:
 
@@ -349,12 +349,12 @@ export function truncateAddress(value: string, lead = 8, tail = 6): string {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm vitest run test/address.test.ts`
 Expected: 3 passed.
 
-- [ ] **Step 5: Write the domain model**
+- [x] **Step 5: Write the domain model**
 
 Create `shared/types.ts`:
 
@@ -432,12 +432,12 @@ export interface RawTransaction {
 }
 ```
 
-- [ ] **Step 6: Verify it typechecks**
+- [x] **Step 6: Verify it typechecks**
 
 Run: `pnpm typecheck`
 Expected: no errors.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add shared/types.ts shared/address.ts test/address.test.ts
@@ -458,7 +458,7 @@ git commit -m "feat: add domain model and address helpers"
   - `CHAINS: readonly ChainConfig[]`
   - `getChain(slug: string): ChainConfig | undefined`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `test/chains.test.ts`:
 
@@ -494,12 +494,12 @@ describe('CHAINS', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm vitest run test/chains.test.ts`
 Expected: FAIL, cannot resolve `~~/shared/chains`.
 
-- [ ] **Step 3: Implement the registry**
+- [x] **Step 3: Implement the registry**
 
 Create `shared/chains.ts`. Phase 1 ships Ethereum only; the array shape is what later chains slot into.
 
@@ -542,12 +542,12 @@ curl -s "https://eth.blockscout.com/api/v2/stats" | head -c 200
 
 If it does not, find the current public instance for Ethereum and use that. Do not commit a URL you have not seen respond.
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm vitest run test/chains.test.ts`
 Expected: 5 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add shared/chains.ts test/chains.test.ts
@@ -570,7 +570,7 @@ git commit -m "feat: add chain registry"
 
 Validation happens before any upstream call, per `docs/SPEC.md` section 12.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `test/txref.test.ts`:
 
@@ -616,12 +616,12 @@ describe('parseTxRef', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm vitest run test/txref.test.ts`
 Expected: FAIL, cannot resolve `~~/server/utils/txref`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `server/utils/txref.ts`:
 
@@ -651,12 +651,12 @@ export function parseTxRef(chainSlug: unknown, hash: unknown): TxRefResult {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm vitest run test/txref.test.ts`
 Expected: 6 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/utils/txref.ts test/txref.test.ts
@@ -680,7 +680,7 @@ git commit -m "feat: validate chain and hash before any upstream call"
 
 Every networked module takes an `HttpClient`. This is the single reason the whole suite runs without a network.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `test/http.test.ts`:
 
@@ -711,12 +711,12 @@ describe('fakeHttp', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm vitest run test/http.test.ts`
 Expected: FAIL, cannot resolve `./helpers/fakeHttp`.
 
-- [ ] **Step 3: Implement the client interface and real client**
+- [x] **Step 3: Implement the client interface and real client**
 
 Create `server/utils/http.ts`:
 
@@ -758,7 +758,7 @@ export function createHttpClient(options: { timeoutMs?: number } = {}): HttpClie
 }
 ```
 
-- [ ] **Step 4: Implement the fake**
+- [x] **Step 4: Implement the fake**
 
 Create `test/helpers/fakeHttp.ts`:
 
@@ -789,12 +789,12 @@ export function fakeHttp(routes: Record<string, unknown>): FakeHttpClient {
 }
 ```
 
-- [ ] **Step 5: Run the test to verify it passes**
+- [x] **Step 5: Run the test to verify it passes**
 
 Run: `pnpm vitest run test/http.test.ts`
 Expected: 3 passed.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add server/utils/http.ts test/helpers/fakeHttp.ts test/http.test.ts
@@ -1694,4 +1694,893 @@ Expected: 5 passed.
 ```bash
 git add server/abi/proxy.ts test/proxy.test.ts
 git commit -m "feat: resolve proxy implementations before abi lookup"
+```
+
+---
+
+### Task 11: The ABI resolution ladder
+
+**Files:**
+- Create: `server/abi/resolve.ts`
+- Test: `test/resolve.test.ts`
+
+**Interfaces:**
+- Consumes: `lookupLabel` (Task 8), `fetchBlockscoutAbi`/`fetchSourcifyAbi`/`fetchFourByteSignature` (Task 9), `resolveImplementation` (Task 10).
+- Produces:
+  - `type AbiResolution = { kind: 'full'; abi: Abi; name: string | null; source: AbiSource; via: Address | null } | { kind: 'signature'; signature: string } | { kind: 'unknown' }`
+  - `type AbiSource = 'labelpack' | 'blockscout' | 'sourcify'`
+  - `interface AbiResolver { forAddress(address: Address): Promise<AbiResolution>; forSelector(selector: Hex): Promise<string | null> }`
+  - `createAbiResolver(http: HttpClient, chain: ChainConfig): AbiResolver`
+
+**Ordering, and why:** the curated label pack wins outright. Then proxies are resolved *before* remote lookups, because a proxy's own verified ABI describes the proxy (upgrade and fallback functions) and not the logic being called — resolving the proxy's ABI would decode nothing useful while looking like success.
+
+A resolver instance memoises per address for the life of one request, so a transaction touching the same contract twenty times does one lookup.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `test/resolve.test.ts`:
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { createAbiResolver } from '~~/server/abi/resolve'
+import { fakeHttp } from './helpers/fakeHttp'
+import { getChain } from '~~/shared/chains'
+
+const chain = getChain('ethereum')!
+const usdc = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+const proxy = '0x1111111111111111111111111111111111111111'
+const impl = '0x2222222222222222222222222222222222222222'
+const plain = '0x3333333333333333333333333333333333333333'
+const abi = [{ type: 'function', name: 'doThing', inputs: [], outputs: [], stateMutability: 'nonpayable' }]
+
+const addressUrl = (a: string) => `${chain.blockscoutBase}/api/v2/addresses/${a}`
+const contractUrl = (a: string) => `${chain.blockscoutBase}/api/v2/smart-contracts/${a}`
+
+describe('createAbiResolver', () => {
+  it('prefers the label pack and makes no network call', async () => {
+    const http = fakeHttp({})
+    const resolution = await createAbiResolver(http, chain).forAddress(usdc)
+    expect(resolution.kind).toBe('full')
+    if (resolution.kind === 'full') {
+      expect(resolution.source).toBe('labelpack')
+      expect(resolution.name).toBe('USDC')
+      expect(resolution.via).toBeNull()
+    }
+    expect(http.calls).toHaveLength(0)
+  })
+
+  it('resolves a proxy to its implementation abi and records via', async () => {
+    const http = fakeHttp({
+      [addressUrl(proxy)]: { implementations: [{ address: impl }] },
+      [contractUrl(impl)]: { abi, name: 'LogicV3' },
+    })
+    const resolution = await createAbiResolver(http, chain).forAddress(proxy)
+    expect(resolution.kind).toBe('full')
+    if (resolution.kind === 'full') {
+      expect(resolution.name).toBe('LogicV3')
+      expect(resolution.via).toBe(impl)
+    }
+  })
+
+  it('falls back to the address own abi when it is not a proxy', async () => {
+    const http = fakeHttp({
+      [addressUrl(plain)]: { implementations: [] },
+      [contractUrl(plain)]: { abi, name: 'Plain' },
+    })
+    const resolution = await createAbiResolver(http, chain).forAddress(plain)
+    expect(resolution.kind).toBe('full')
+    if (resolution.kind === 'full') {
+      expect(resolution.source).toBe('blockscout')
+      expect(resolution.via).toBeNull()
+    }
+  })
+
+  it('returns unknown when nothing resolves', async () => {
+    const resolution = await createAbiResolver(fakeHttp({}), chain).forAddress(plain)
+    expect(resolution).toEqual({ kind: 'unknown' })
+  })
+
+  it('memoises repeated lookups of the same address', async () => {
+    const http = fakeHttp({
+      [addressUrl(plain)]: { implementations: [] },
+      [contractUrl(plain)]: { abi, name: 'Plain' },
+    })
+    const resolver = createAbiResolver(http, chain)
+    await resolver.forAddress(plain)
+    const callsAfterFirst = http.calls.length
+    await resolver.forAddress(plain)
+    expect(http.calls).toHaveLength(callsAfterFirst)
+  })
+
+  it('resolves a selector through 4byte', async () => {
+    const http = fakeHttp({
+      'https://www.4byte.directory/api/v1/signatures/?hex_signature=0xa9059cbb': {
+        results: [{ id: 1, text_signature: 'transfer(address,uint256)' }],
+      },
+    })
+    expect(await createAbiResolver(http, chain).forSelector('0xa9059cbb')).toBe('transfer(address,uint256)')
+  })
+})
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pnpm vitest run test/resolve.test.ts`
+Expected: FAIL, cannot resolve `~~/server/abi/resolve`.
+
+- [ ] **Step 3: Implement**
+
+Create `server/abi/resolve.ts`:
+
+```ts
+import type { Abi, Address, Hex } from 'viem'
+import { normaliseAddress } from '~~/shared/address'
+import type { ChainConfig } from '~~/shared/chains'
+import type { HttpClient } from '~~/server/utils/http'
+import { lookupLabel } from './labelpack'
+import { resolveImplementation } from './proxy'
+import { fetchBlockscoutAbi, fetchFourByteSignature, fetchSourcifyAbi } from './remote'
+
+export type AbiSource = 'labelpack' | 'blockscout' | 'sourcify'
+
+export type AbiResolution =
+  | { kind: 'full'; abi: Abi; name: string | null; source: AbiSource; via: Address | null }
+  | { kind: 'signature'; signature: string }
+  | { kind: 'unknown' }
+
+export interface AbiResolver {
+  forAddress(address: string): Promise<AbiResolution>
+  forSelector(selector: Hex | string): Promise<string | null>
+}
+
+export function createAbiResolver(http: HttpClient, chain: ChainConfig): AbiResolver {
+  const addressCache = new Map<Address, Promise<AbiResolution>>()
+  const selectorCache = new Map<string, Promise<string | null>>()
+
+  /** Label pack, then Blockscout verified source, then Sourcify. No proxy step. */
+  async function direct(address: Address): Promise<AbiResolution | null> {
+    const label = lookupLabel(chain.id, address)
+    if (label?.abi) {
+      return { kind: 'full', abi: label.abi, name: label.name, source: 'labelpack', via: null }
+    }
+
+    const blockscout = await fetchBlockscoutAbi(http, chain, address)
+    if (blockscout) {
+      return { kind: 'full', abi: blockscout.abi, name: blockscout.name, source: 'blockscout', via: null }
+    }
+
+    const sourcify = await fetchSourcifyAbi(http, chain.id, address)
+    if (sourcify) {
+      return { kind: 'full', abi: sourcify, name: null, source: 'sourcify', via: null }
+    }
+
+    return null
+  }
+
+  async function resolveAddress(address: Address): Promise<AbiResolution> {
+    // 1. Curated wins outright, and costs nothing.
+    const label = lookupLabel(chain.id, address)
+    if (label?.abi) {
+      return { kind: 'full', abi: label.abi, name: label.name, source: 'labelpack', via: null }
+    }
+
+    // 2. Proxy before remote: a proxy's own ABI describes the proxy, not the
+    //    logic being called, so resolving it would decode nothing useful.
+    const implementation = await resolveImplementation(http, chain, address)
+    if (implementation) {
+      const viaImpl = await direct(implementation)
+      if (viaImpl?.kind === 'full') return { ...viaImpl, via: implementation }
+    }
+
+    // 3. The address's own verified source.
+    const own = await direct(address)
+    if (own) return own
+
+    return { kind: 'unknown' }
+  }
+
+  return {
+    forAddress(input: string) {
+      const address = normaliseAddress(input)
+      const cached = addressCache.get(address)
+      if (cached) return cached
+      const pending = resolveAddress(address)
+      addressCache.set(address, pending)
+      return pending
+    },
+    forSelector(selector: Hex | string) {
+      const key = selector.toLowerCase()
+      const cached = selectorCache.get(key)
+      if (cached) return cached
+      const pending = fetchFourByteSignature(http, key)
+      selectorCache.set(key, pending)
+      return pending
+    },
+  }
+}
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pnpm vitest run test/resolve.test.ts`
+Expected: 6 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add server/abi/resolve.ts test/resolve.test.ts
+git commit -m "feat: add abi resolution ladder with proxy-first ordering"
+```
+
+---
+
+### Task 12: Decode call inputs
+
+**Files:**
+- Create: `server/decode/calls.ts`
+- Test: `test/decode-calls.test.ts`
+
+**Interfaces:**
+- Consumes: `AbiResolution`, `AbiResolver` (Task 11).
+- Produces:
+  - `interface DecodedArg { name: string; type: string; value: string }`
+  - `interface DecodedCall { confidence: 'decoded' | 'signatureOnly' | 'raw' | 'nativeTransfer'; contractName: string | null; via: Address | null; functionName: string | null; signature: string | null; selector: Hex | null; args: DecodedArg[]; raw: Hex }`
+  - `decodeCallInput(input: Hex, resolver: AbiResolver, target: Address | null): Promise<DecodedCall>`
+
+`confidence` is what the UI renders differently. `raw` must never be dressed up as `decoded` — that is the honesty rule from `CLAUDE.md`.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `test/decode-calls.test.ts`:
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { decodeCallInput } from '~~/server/decode/calls'
+import { createAbiResolver } from '~~/server/abi/resolve'
+import { fakeHttp } from './helpers/fakeHttp'
+import { getChain } from '~~/shared/chains'
+
+const chain = getChain('ethereum')!
+const usdc = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+const unknown = '0x3333333333333333333333333333333333333333'
+
+// transfer(0x2222...2222, 123)
+const TRANSFER_INPUT =
+  '0xa9059cbb0000000000000000000000002222222222222222222222222222222222222222000000000000000000000000000000000000000000000000000000000000007b'
+
+describe('decodeCallInput', () => {
+  it('decodes a known function with named arguments', async () => {
+    const resolver = createAbiResolver(fakeHttp({}), chain)
+    const decoded = await decodeCallInput(TRANSFER_INPUT, resolver, usdc)
+    expect(decoded.confidence).toBe('decoded')
+    expect(decoded.functionName).toBe('transfer')
+    expect(decoded.contractName).toBe('USDC')
+    expect(decoded.args).toEqual([
+      { name: 'to', type: 'address', value: '0x2222222222222222222222222222222222222222' },
+      { name: 'amount', type: 'uint256', value: '123' },
+    ])
+  })
+
+  it('reports a native transfer for empty calldata', async () => {
+    const resolver = createAbiResolver(fakeHttp({}), chain)
+    const decoded = await decodeCallInput('0x', resolver, unknown)
+    expect(decoded.confidence).toBe('nativeTransfer')
+    expect(decoded.selector).toBeNull()
+    expect(decoded.args).toEqual([])
+  })
+
+  it('falls back to a signature-only result when no abi resolves', async () => {
+    const http = fakeHttp({
+      'https://www.4byte.directory/api/v1/signatures/?hex_signature=0xa9059cbb': {
+        results: [{ id: 1, text_signature: 'transfer(address,uint256)' }],
+      },
+    })
+    const decoded = await decodeCallInput(TRANSFER_INPUT, createAbiResolver(http, chain), unknown)
+    expect(decoded.confidence).toBe('signatureOnly')
+    expect(decoded.signature).toBe('transfer(address,uint256)')
+    expect(decoded.args).toEqual([])
+    expect(decoded.raw).toBe(TRANSFER_INPUT)
+  })
+
+  it('returns raw when even the selector is unknown', async () => {
+    const decoded = await decodeCallInput(TRANSFER_INPUT, createAbiResolver(fakeHttp({}), chain), unknown)
+    expect(decoded.confidence).toBe('raw')
+    expect(decoded.selector).toBe('0xa9059cbb')
+    expect(decoded.functionName).toBeNull()
+  })
+
+  it('returns raw when the abi resolves but the selector is not in it', async () => {
+    const resolver = createAbiResolver(fakeHttp({}), chain)
+    const decoded = await decodeCallInput('0xdeadbeef', resolver, usdc)
+    expect(decoded.confidence).toBe('raw')
+    expect(decoded.contractName).toBe('USDC')
+  })
+
+  it('serialises bigint arguments as decimal strings, never numbers', async () => {
+    const resolver = createAbiResolver(fakeHttp({}), chain)
+    const decoded = await decodeCallInput(TRANSFER_INPUT, resolver, usdc)
+    for (const arg of decoded.args) expect(typeof arg.value).toBe('string')
+  })
+})
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pnpm vitest run test/decode-calls.test.ts`
+Expected: FAIL, cannot resolve `~~/server/decode/calls`.
+
+- [ ] **Step 3: Implement**
+
+Create `server/decode/calls.ts`:
+
+```ts
+import { type AbiFunction, type Address, type Hex, decodeFunctionData, slice } from 'viem'
+import type { AbiResolver } from '~~/server/abi/resolve'
+
+export interface DecodedArg {
+  name: string
+  type: string
+  value: string
+}
+
+export interface DecodedCall {
+  /** How much we actually know. The UI renders each of these differently. */
+  confidence: 'decoded' | 'signatureOnly' | 'raw' | 'nativeTransfer'
+  contractName: string | null
+  via: Address | null
+  functionName: string | null
+  signature: string | null
+  selector: Hex | null
+  args: DecodedArg[]
+  raw: Hex
+}
+
+/** Everything crossing the API edge is a string. bigints do not survive JSON. */
+function stringifyValue(value: unknown): string {
+  if (typeof value === 'bigint') return value.toString()
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) return `[${value.map(stringifyValue).join(', ')}]`
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'object') return JSON.stringify(value, (_, v) => (typeof v === 'bigint' ? v.toString() : v))
+  return String(value)
+}
+
+export async function decodeCallInput(
+  input: Hex,
+  resolver: AbiResolver,
+  target: Address | null,
+): Promise<DecodedCall> {
+  const base: DecodedCall = {
+    confidence: 'raw',
+    contractName: null,
+    via: null,
+    functionName: null,
+    signature: null,
+    selector: null,
+    args: [],
+    raw: input,
+  }
+
+  if (!input || input === '0x' || input.length < 10) {
+    return { ...base, confidence: 'nativeTransfer' }
+  }
+
+  const selector = slice(input, 0, 4)
+  const withSelector: DecodedCall = { ...base, selector }
+
+  const resolution = target ? await resolver.forAddress(target) : { kind: 'unknown' as const }
+
+  if (resolution.kind === 'full') {
+    const named = { ...withSelector, contractName: resolution.name, via: resolution.via }
+    try {
+      const { functionName, args } = decodeFunctionData({ abi: resolution.abi, data: input })
+      const entry = resolution.abi.find(
+        (item): item is AbiFunction => item.type === 'function' && item.name === functionName,
+      )
+      const inputs = entry?.inputs ?? []
+      return {
+        ...named,
+        confidence: 'decoded',
+        functionName,
+        signature: `${functionName}(${inputs.map((i) => i.type).join(',')})`,
+        args: (args ?? []).map((value, index) => ({
+          name: inputs[index]?.name || `arg${index}`,
+          type: inputs[index]?.type ?? 'unknown',
+          value: stringifyValue(value),
+        })),
+      }
+    } catch {
+      // The ABI resolved but does not contain this selector — a proxy pointing
+      // at the wrong implementation, or an ABI that is simply incomplete.
+      return named
+    }
+  }
+
+  const signature = await resolver.forSelector(selector)
+  if (signature) {
+    // A name with no argument types. Do not attempt to decode arguments from
+    // it: a 4byte signature is a guess, and wrong arguments are worse than none.
+    return { ...withSelector, confidence: 'signatureOnly', signature, functionName: signature.split('(')[0] }
+  }
+
+  return withSelector
+}
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pnpm vitest run test/decode-calls.test.ts`
+Expected: 6 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add server/decode/calls.ts test/decode-calls.test.ts
+git commit -m "feat: decode call inputs with graded confidence"
+```
+
+---
+
+### Task 13: Decode logs
+
+**Files:**
+- Create: `server/decode/logs.ts`
+- Test: `test/decode-logs.test.ts`
+
+**Interfaces:**
+- Consumes: `RawLog` (Task 2), `AbiResolver` (Task 11), `DecodedArg` (Task 12), `ERC20_ABI`/`ERC721_ABI`/`ERC1155_ABI`/`WETH_ABI` (Task 8).
+- Produces:
+  - `interface DecodedLog { confidence: 'decoded' | 'raw'; address: Address; contractName: string | null; eventName: string | null; signature: string | null; args: DecodedArg[]; topic0: Hex | null; logIndex: number }`
+  - `decodeLogs(logs: RawLog[], resolver: AbiResolver): Promise<DecodedLog[]>`
+
+**Why a standard-event fallback exists:** `Transfer` has the same topic0 on every ERC-20 in existence, so an unverified token's transfers are still decodable. ERC-20 and ERC-721 `Transfer` differ only in whether the third parameter is indexed, which changes the topic count — so trying both and keeping whichever decodes is correct, not a hack.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `test/decode-logs.test.ts`:
+
+```ts
+import { describe, expect, it } from 'vitest'
+import type { RawLog } from '~~/shared/types'
+import { decodeLogs } from '~~/server/decode/logs'
+import { createAbiResolver } from '~~/server/abi/resolve'
+import { fakeHttp } from './helpers/fakeHttp'
+import { getChain } from '~~/shared/chains'
+
+const chain = getChain('ethereum')!
+const usdc = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+const mystery = '0x3333333333333333333333333333333333333333'
+
+const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+const from = '0x0000000000000000000000001111111111111111111111111111111111111111'
+const to = '0x0000000000000000000000002222222222222222222222222222222222222222'
+const amount = '0x000000000000000000000000000000000000000000000000000000000000007b'
+
+function erc20Transfer(address: string, logIndex = 0): RawLog {
+  return { address, topics: [TRANSFER_TOPIC, from, to], data: amount, logIndex } as RawLog
+}
+
+describe('decodeLogs', () => {
+  it('decodes a transfer using the resolved contract abi', async () => {
+    const [log] = await decodeLogs([erc20Transfer(usdc)], createAbiResolver(fakeHttp({}), chain))
+    expect(log.confidence).toBe('decoded')
+    expect(log.eventName).toBe('Transfer')
+    expect(log.contractName).toBe('USDC')
+    expect(log.args).toEqual([
+      { name: 'from', type: 'address', value: '0x1111111111111111111111111111111111111111' },
+      { name: 'to', type: 'address', value: '0x2222222222222222222222222222222222222222' },
+      { name: 'value', type: 'uint256', value: '123' },
+    ])
+  })
+
+  it('decodes a transfer on an unverified contract via the standard event abis', async () => {
+    const [log] = await decodeLogs([erc20Transfer(mystery)], createAbiResolver(fakeHttp({}), chain))
+    expect(log.confidence).toBe('decoded')
+    expect(log.eventName).toBe('Transfer')
+    expect(log.contractName).toBeNull()
+  })
+
+  it('decodes an erc-721 transfer, where tokenId is indexed', async () => {
+    const nft: RawLog = {
+      address: mystery,
+      topics: [TRANSFER_TOPIC, from, to, amount],
+      data: '0x',
+      logIndex: 0,
+    } as RawLog
+    const [log] = await decodeLogs([nft], createAbiResolver(fakeHttp({}), chain))
+    expect(log.confidence).toBe('decoded')
+    expect(log.args.at(-1)).toEqual({ name: 'tokenId', type: 'uint256', value: '123' })
+  })
+
+  it('returns raw for an event it cannot decode', async () => {
+    const odd: RawLog = { address: mystery, topics: ['0xdeadbeef'], data: '0x', logIndex: 3 } as RawLog
+    const [log] = await decodeLogs([odd], createAbiResolver(fakeHttp({}), chain))
+    expect(log.confidence).toBe('raw')
+    expect(log.eventName).toBeNull()
+    expect(log.topic0).toBe('0xdeadbeef')
+    expect(log.logIndex).toBe(3)
+  })
+
+  it('handles an anonymous event with no topics at all', async () => {
+    const anon: RawLog = { address: mystery, topics: [], data: '0x1234', logIndex: 1 } as RawLog
+    const [log] = await decodeLogs([anon], createAbiResolver(fakeHttp({}), chain))
+    expect(log.confidence).toBe('raw')
+    expect(log.topic0).toBeNull()
+  })
+
+  it('preserves input order', async () => {
+    const logs = [erc20Transfer(usdc, 5), erc20Transfer(mystery, 2)]
+    const decoded = await decodeLogs(logs, createAbiResolver(fakeHttp({}), chain))
+    expect(decoded.map((l) => l.logIndex)).toEqual([5, 2])
+  })
+})
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pnpm vitest run test/decode-logs.test.ts`
+Expected: FAIL, cannot resolve `~~/server/decode/logs`.
+
+- [ ] **Step 3: Implement**
+
+Create `server/decode/logs.ts`:
+
+```ts
+import { type Abi, type AbiEvent, type Address, type Hex, decodeEventLog } from 'viem'
+import type { RawLog } from '~~/shared/types'
+import type { AbiResolver } from '~~/server/abi/resolve'
+import { ERC1155_ABI, ERC20_ABI, ERC721_ABI, WETH_ABI } from '~~/server/abi/labelpack.data'
+import type { DecodedArg } from './calls'
+
+export interface DecodedLog {
+  confidence: 'decoded' | 'raw'
+  address: Address
+  contractName: string | null
+  eventName: string | null
+  signature: string | null
+  args: DecodedArg[]
+  topic0: Hex | null
+  logIndex: number
+}
+
+/**
+ * Tried when a contract's own ABI is unavailable or does not contain the event.
+ * Standard event topics are identical across every implementation, so an
+ * unverified token's transfers still decode.
+ */
+const STANDARD_ABIS: Abi[] = [ERC20_ABI, ERC721_ABI, ERC1155_ABI, WETH_ABI]
+
+function stringifyValue(value: unknown): string {
+  if (typeof value === 'bigint') return value.toString()
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) return `[${value.map(stringifyValue).join(', ')}]`
+  if (value === null || value === undefined) return ''
+  return String(value)
+}
+
+function attempt(abi: Abi, log: RawLog): Pick<DecodedLog, 'eventName' | 'signature' | 'args'> | null {
+  try {
+    const { eventName, args } = decodeEventLog({
+      abi,
+      data: log.data,
+      topics: log.topics as [Hex, ...Hex[]],
+    })
+    const entry = abi.find(
+      (item): item is AbiEvent => item.type === 'event' && item.name === eventName,
+    )
+    const inputs = entry?.inputs ?? []
+    const values = args as Record<string, unknown> | readonly unknown[] | undefined
+
+    const mapped: DecodedArg[] = inputs.map((input, index) => {
+      const name = input.name || `arg${index}`
+      const raw = Array.isArray(values)
+        ? values[index]
+        : (values as Record<string, unknown> | undefined)?.[name]
+      return { name, type: input.type, value: stringifyValue(raw) }
+    })
+
+    return {
+      eventName,
+      signature: `${eventName}(${inputs.map((i) => i.type).join(',')})`,
+      args: mapped,
+    }
+  } catch {
+    return null
+  }
+}
+
+export async function decodeLogs(logs: RawLog[], resolver: AbiResolver): Promise<DecodedLog[]> {
+  return Promise.all(
+    logs.map(async (log): Promise<DecodedLog> => {
+      const resolution = await resolver.forAddress(log.address)
+      const contractName = resolution.kind === 'full' ? resolution.name : null
+
+      const base: DecodedLog = {
+        confidence: 'raw',
+        address: log.address,
+        contractName,
+        eventName: null,
+        signature: null,
+        args: [],
+        topic0: (log.topics[0] as Hex | undefined) ?? null,
+        logIndex: log.logIndex,
+      }
+
+      if (log.topics.length === 0) return base
+
+      const candidates: Abi[] = resolution.kind === 'full' ? [resolution.abi, ...STANDARD_ABIS] : STANDARD_ABIS
+
+      for (const abi of candidates) {
+        const decoded = attempt(abi, log)
+        if (decoded) return { ...base, confidence: 'decoded', ...decoded }
+      }
+
+      return base
+    }),
+  )
+}
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pnpm vitest run test/decode-logs.test.ts`
+Expected: 6 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add server/decode/logs.ts test/decode-logs.test.ts
+git commit -m "feat: decode logs with standard event fallback"
+```
+
+---
+
+### Task 14: The API route
+
+**Files:**
+- Create: `shared/wire.ts`, `server/api/tx/[chain]/[hash].get.ts`
+- Test: `test/wire.test.ts`
+
+**Interfaces:**
+- Consumes: everything above.
+- Produces:
+  - `interface TxPayload` — the wire format, all integers as decimal strings
+  - `toWire(tx: RawTransaction, call: DecodedCall, logs: DecodedLog[]): TxPayload`
+  - `GET /api/tx/:chain/:hash`
+
+The route orchestrates and nothing else. `toWire` holds the serialisation and is unit-tested; the route itself needs no test beyond the e2e in Task 16.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `test/wire.test.ts`:
+
+```ts
+import { describe, expect, it } from 'vitest'
+import type { RawTransaction } from '~~/shared/types'
+import { toWire } from '~~/shared/wire'
+
+const tx: RawTransaction = {
+  chainId: 1,
+  hash: '0xaaaa000000000000000000000000000000000000000000000000000000000001',
+  blockNumber: 21000000n,
+  timestamp: 1768473000,
+  from: '0x1111111111111111111111111111111111111111',
+  to: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+  value: 1000000000000000000n,
+  input: '0x',
+  status: 'success',
+  revertReason: null,
+  gasUsed: 52000n,
+  effectiveGasPrice: 12000000000n,
+  logs: [],
+  activity: {
+    kind: 'flat',
+    calls: [
+      {
+        kind: 'CALL',
+        from: '0x1111111111111111111111111111111111111111',
+        to: '0x2222222222222222222222222222222222222222',
+        value: 500000000000000000n,
+        error: null,
+      },
+    ],
+  },
+  provenance: 'internalTransactions',
+  sourceName: 'blockscout',
+}
+
+const call = {
+  confidence: 'nativeTransfer' as const,
+  contractName: null, via: null, functionName: null, signature: null,
+  selector: null, args: [], raw: '0x' as const,
+}
+
+describe('toWire', () => {
+  it('serialises every bigint as a decimal string', () => {
+    const wire = toWire(tx, call, [])
+    expect(wire.blockNumber).toBe('21000000')
+    expect(wire.value).toBe('1000000000000000000')
+    expect(wire.gasUsed).toBe('52000')
+    expect(wire.effectiveGasPrice).toBe('12000000000')
+  })
+
+  it('computes the fee as gasUsed times effectiveGasPrice', () => {
+    expect(toWire(tx, call, []).feeWei).toBe((52000n * 12000000000n).toString())
+  })
+
+  it('serialises flat call values as strings and keeps the kind discriminator', () => {
+    const wire = toWire(tx, call, [])
+    expect(wire.activity.kind).toBe('flat')
+    if (wire.activity.kind === 'flat') {
+      expect(wire.activity.calls[0].value).toBe('500000000000000000')
+    }
+  })
+
+  it('survives JSON round-tripping without loss', () => {
+    const wire = toWire(tx, call, [])
+    expect(JSON.parse(JSON.stringify(wire))).toEqual(wire)
+  })
+
+  it('carries provenance and source name through', () => {
+    const wire = toWire(tx, call, [])
+    expect(wire.provenance).toBe('internalTransactions')
+    expect(wire.sourceName).toBe('blockscout')
+  })
+})
+```
+
+The JSON round-trip test is the one that catches a stray `bigint` anywhere in the payload — `JSON.stringify` throws on them.
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pnpm vitest run test/wire.test.ts`
+Expected: FAIL, cannot resolve `~~/shared/wire`.
+
+- [ ] **Step 3: Implement the wire format**
+
+Create `shared/wire.ts`:
+
+```ts
+import type { Address, Hex } from 'viem'
+import type { CallKind, RawTransaction, TraceProvenance } from './types'
+import type { DecodedCall } from '~~/server/decode/calls'
+import type { DecodedLog } from '~~/server/decode/logs'
+
+export interface WireFlatCall {
+  kind: CallKind
+  from: Address
+  to: Address | null
+  value: string
+  error: string | null
+}
+
+export type WireActivity =
+  | { kind: 'flat'; calls: WireFlatCall[] }
+  | { kind: 'none' }
+
+export interface TxPayload {
+  chainId: number
+  hash: Hex
+  blockNumber: string
+  timestamp: number
+  from: Address
+  to: Address | null
+  value: string
+  status: 'success' | 'reverted'
+  revertReason: string | null
+  gasUsed: string
+  effectiveGasPrice: string
+  feeWei: string
+  call: DecodedCall
+  logs: DecodedLog[]
+  activity: WireActivity
+  provenance: TraceProvenance
+  sourceName: string
+}
+
+export function toWire(tx: RawTransaction, call: DecodedCall, logs: DecodedLog[]): TxPayload {
+  const activity: WireActivity =
+    tx.activity.kind === 'flat'
+      ? {
+          kind: 'flat',
+          calls: tx.activity.calls.map((c) => ({
+            kind: c.kind,
+            from: c.from,
+            to: c.to,
+            value: c.value.toString(),
+            error: c.error,
+          })),
+        }
+      : { kind: 'none' }
+
+  return {
+    chainId: tx.chainId,
+    hash: tx.hash,
+    blockNumber: tx.blockNumber.toString(),
+    timestamp: tx.timestamp,
+    from: tx.from,
+    to: tx.to,
+    value: tx.value.toString(),
+    status: tx.status,
+    revertReason: tx.revertReason,
+    gasUsed: tx.gasUsed.toString(),
+    effectiveGasPrice: tx.effectiveGasPrice.toString(),
+    feeWei: (tx.gasUsed * tx.effectiveGasPrice).toString(),
+    call,
+    logs,
+    activity,
+    provenance: tx.provenance,
+    sourceName: tx.sourceName,
+  }
+}
+```
+
+`RawTransaction.activity` can be `{ kind: 'tree' }` in the domain model, but no phase 1 source produces one, so `toWire` maps it to `none`. When a callTracer source lands, extend `WireActivity` with a `tree` variant and the compiler will point at every place that needs updating.
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `pnpm vitest run test/wire.test.ts`
+Expected: 5 passed.
+
+- [ ] **Step 5: Write the route**
+
+Create `server/api/tx/[chain]/[hash].get.ts`:
+
+```ts
+import { createAbiResolver } from '~~/server/abi/resolve'
+import { decodeCallInput } from '~~/server/decode/calls'
+import { decodeLogs } from '~~/server/decode/logs'
+import { fetchTransaction } from '~~/server/sources/registry'
+import { createHttpClient } from '~~/server/utils/http'
+import { parseTxRef } from '~~/server/utils/txref'
+import { toWire } from '~~/shared/wire'
+
+export default defineEventHandler(async (event) => {
+  const parsed = parseTxRef(
+    getRouterParam(event, 'chain'),
+    getRouterParam(event, 'hash'),
+  )
+  if (!parsed.ok) {
+    throw createError({ statusCode: 400, statusMessage: parsed.reason })
+  }
+
+  const { chain, hash } = parsed.ref
+  const http = createHttpClient()
+
+  const tx = await fetchTransaction(http, chain, hash)
+  if (!tx) {
+    throw createError({ statusCode: 404, statusMessage: 'transaction not found' })
+  }
+
+  const resolver = createAbiResolver(http, chain)
+  const [call, logs] = await Promise.all([
+    decodeCallInput(tx.input, resolver, tx.to),
+    decodeLogs(tx.logs, resolver),
+  ])
+
+  return toWire(tx, call, logs)
+})
+```
+
+- [ ] **Step 6: Verify the route against a real transaction**
+
+```bash
+pnpm dev
+```
+
+In another terminal, using a real recent Ethereum hash:
+
+```bash
+curl -s "http://localhost:3000/api/tx/ethereum/<REAL_HASH>" | head -c 2000
+curl -s -o /dev/null -w '%{http_code}\n' "http://localhost:3000/api/tx/ethereum/0xdeadbeef"
+curl -s -o /dev/null -w '%{http_code}\n' "http://localhost:3000/api/tx/dogecoin/<REAL_HASH>"
+```
+
+Expected: a JSON payload, then `400`, then `400`. If the first returns 404, the Blockscout field names differ from Task 6's fixture — fix the fixture, the interfaces, and the test together, and say so in your report.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add shared/wire.ts server/api test/wire.test.ts
+git commit -m "feat: add tx api route with string-serialised wire format"
 ```
