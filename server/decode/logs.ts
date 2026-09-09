@@ -30,6 +30,17 @@ function stringifyValue(value: unknown): string {
   return String(value)
 }
 
+/**
+ * viem returns EIP-55 checksummed addresses. Everything else in this codebase
+ * stores addresses lowercased, and a payload mixing both forms invites a
+ * comparison bug downstream. Nested tuples are not walked — only whole
+ * address and address[] arguments.
+ */
+function formatArgValue(type: string, value: unknown): string {
+  const text = stringifyValue(value)
+  return type.startsWith('address') ? text.toLowerCase() : text
+}
+
 function attempt(
   abi: Abi,
   log: RawLog,
@@ -51,7 +62,7 @@ function attempt(
       const raw = Array.isArray(values)
         ? values[index]
         : (values as Record<string, unknown> | undefined)?.[name]
-      return { name, type: input.type, value: stringifyValue(raw) }
+      return { name, type: input.type, value: formatArgValue(input.type, raw) }
     })
 
     return {

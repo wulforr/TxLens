@@ -6,7 +6,14 @@ export interface HttpClient {
   getJson<T>(url: string): Promise<HttpResult<T>>
 }
 
-const DEFAULT_TIMEOUT_MS = 8_000
+/**
+ * Public Blockscout takes 5-8 seconds to answer `/logs` and
+ * `/internal-transactions` for a heavy transaction, and this client fires both
+ * at once. At the original 8s both aborted intermittently, and the honest
+ * degradation path turned a complete transaction into `logs only` at random.
+ * Measured against eth.blockscout.com on 2026-09-10.
+ */
+const DEFAULT_TIMEOUT_MS = 20_000
 
 export function createHttpClient(options: { timeoutMs?: number } = {}): HttpClient {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS

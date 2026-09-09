@@ -69,4 +69,17 @@ describe('decodeCallInput', () => {
     const decoded = await decodeCallInput(TRANSFER_INPUT, resolver, usdc)
     for (const arg of decoded.args) expect(typeof arg.value).toBe('string')
   })
+
+  it('lowercases address arguments rather than leaking viem checksum casing', async () => {
+    // transfer(0xa0b8...eb48, 123) — an address whose EIP-55 form is mixed case.
+    const input =
+      '0xa9059cbb000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48000000000000000000000000000000000000000000000000000000000000007b'
+    const resolver = createAbiResolver(fakeHttp({}), chain)
+    const decoded = await decodeCallInput(input, resolver, usdc)
+    expect(decoded.args[0]).toEqual({
+      name: 'to',
+      type: 'address',
+      value: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+    })
+  })
 })

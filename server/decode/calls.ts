@@ -33,6 +33,17 @@ function stringifyValue(value: unknown): string {
   return String(value)
 }
 
+/**
+ * viem returns EIP-55 checksummed addresses. Everything else in this codebase
+ * stores addresses lowercased, and a payload mixing both forms invites a
+ * comparison bug downstream. Nested tuples are not walked — only whole
+ * address and address[] arguments.
+ */
+function formatArgValue(type: string, value: unknown): string {
+  const text = stringifyValue(value)
+  return type.startsWith('address') ? text.toLowerCase() : text
+}
+
 export async function decodeCallInput(
   input: Hex,
   resolver: AbiResolver,
@@ -71,11 +82,14 @@ export async function decodeCallInput(
         confidence: 'decoded',
         functionName,
         signature: `${functionName}(${inputs.map((i) => i.type).join(',')})`,
-        args: (args ?? []).map((value, index) => ({
-          name: inputs[index]?.name || `arg${index}`,
-          type: inputs[index]?.type ?? 'unknown',
-          value: stringifyValue(value),
-        })),
+        args: (args ?? []).map((value, index) => {
+          const type = inputs[index]?.type ?? 'unknown'
+          return {
+            name: inputs[index]?.name || `arg${index}`,
+            type,
+            value: formatArgValue(type, value),
+          }
+        }),
       }
     } catch {
       // The ABI resolved but does not contain this selector — a proxy pointing
