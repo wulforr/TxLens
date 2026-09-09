@@ -839,7 +839,7 @@ git commit -m "feat: add injectable http client seam"
 
 **On fixtures:** unit tests run against a fixture authored here, so they are deterministic and offline. Step 1 also has you check the fixture against the live API once, by hand. If the real shape differs, update the fixture *and* the `Blockscout*` interfaces together, keeping the field names the real API uses — then adjust the assertions to match the real values. The mapping logic and the assertions about normalisation, unit conversion, and provenance stay the same either way.
 
-- [ ] **Step 1: Check the real response shape once, by hand**
+- [x] **Step 1: Check the real response shape once, by hand**
 
 ```bash
 curl -s "https://eth.blockscout.com/api/v2/transactions/0x2b0dc0b1d0e0e1f8c2a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809" | head -c 1500
@@ -847,7 +847,7 @@ curl -s "https://eth.blockscout.com/api/v2/transactions/0x2b0dc0b1d0e0e1f8c2a3b4
 
 That hash is a placeholder and will 404. Replace it with any real recent Ethereum transaction hash — take one from the Blockscout homepage's recent transactions list. Do the same for the `/logs` and `/internal-transactions` sub-paths. Note the field names you actually see; you will need them in Step 3.
 
-- [ ] **Step 2: Write the fixture**
+- [x] **Step 2: Write the fixture**
 
 Create `test/fixtures/blockscout/transfer.json`. This models a transaction that calls a contract, emits one log, and makes one internal ETH transfer:
 
@@ -894,7 +894,7 @@ Create `test/fixtures/blockscout/transfer.json`. This models a transaction that 
 }
 ```
 
-- [ ] **Step 3: Write the failing test**
+- [x] **Step 3: Write the failing test**
 
 Create `test/blockscout.test.ts`:
 
@@ -986,12 +986,12 @@ describe('fetchFromBlockscout', () => {
 })
 ```
 
-- [ ] **Step 4: Run the test to verify it fails**
+- [x] **Step 4: Run the test to verify it fails**
 
 Run: `pnpm vitest run test/blockscout.test.ts`
 Expected: FAIL, cannot resolve `~~/server/sources/blockscout`.
 
-- [ ] **Step 5: Implement the adapter**
+- [x] **Step 5: Implement the adapter**
 
 Create `server/sources/blockscout.ts`:
 
@@ -1112,12 +1112,12 @@ export async function fetchFromBlockscout(
 }
 ```
 
-- [ ] **Step 6: Run the test to verify it passes**
+- [x] **Step 6: Run the test to verify it passes**
 
 Run: `pnpm vitest run test/blockscout.test.ts`
 Expected: 8 passed.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add server/sources/blockscout.ts test/blockscout.test.ts test/fixtures/blockscout/transfer.json
@@ -1141,7 +1141,7 @@ git commit -m "feat: add blockscout source adapter with flat call activity"
 
 Ordered fallback. Phase 1 has one source; the ordering machinery exists so that adding a `callTracer` source later is a registry entry, not a rewrite.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `test/registry.test.ts`:
 
@@ -1209,12 +1209,12 @@ describe('fetchTransaction', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm vitest run test/registry.test.ts`
 Expected: FAIL, cannot resolve `~~/server/sources/registry`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `server/sources/registry.ts`:
 
@@ -1257,12 +1257,12 @@ export async function fetchTransaction(
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm vitest run test/registry.test.ts`
 Expected: 4 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/sources/registry.ts test/registry.test.ts
@@ -1284,7 +1284,7 @@ git commit -m "feat: add ordered source registry with fallback"
 
 The label pack is what makes the demo transactions decode perfectly with zero network calls, and it is the first rung of the resolution ladder in Task 11.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `test/labelpack.test.ts`:
 
@@ -1323,16 +1323,16 @@ describe('LABELS', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm vitest run test/labelpack.test.ts`
 Expected: FAIL, cannot resolve `~~/server/abi/labelpack`.
 
-- [ ] **Step 3: Verify every address before writing it down**
+- [x] **Step 3: Verify every address before writing it down**
 
 A wrong address in the label pack is a silent correctness bug — it will confidently mislabel someone's transaction. For each address in the next step, open `https://eth.blockscout.com/address/<address>` and confirm the contract name matches. Do not skip this.
 
-- [ ] **Step 4: Write the label data**
+- [x] **Step 4: Write the label data**
 
 Create `server/abi/labelpack.data.ts`:
 
@@ -1391,7 +1391,7 @@ export const RAW_LABELS: RawLabel[] = [
 
 If any address fails verification in Step 3, remove it rather than guessing a replacement. A short label pack is fine; a wrong one is not.
 
-- [ ] **Step 5: Write the lookup**
+- [x] **Step 5: Write the lookup**
 
 Create `server/abi/labelpack.ts`:
 
@@ -1420,12 +1420,12 @@ export function lookupLabel(chainId: number, address: string): LabelEntry | unde
 }
 ```
 
-- [ ] **Step 6: Run the test to verify it passes**
+- [x] **Step 6: Run the test to verify it passes**
 
 Run: `pnpm vitest run test/labelpack.test.ts`
 Expected: 5 passed.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add server/abi/labelpack.ts server/abi/labelpack.data.ts test/labelpack.test.ts
@@ -1449,7 +1449,7 @@ git commit -m "feat: add curated address label pack"
 
 **Gotcha to preserve:** Sourcify paths use the **EIP-55 checksummed** address, while everything else in this codebase is lowercase. `getAddress()` from viem does the conversion. Getting this wrong produces a silent 404 and looks like an unverified contract.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `test/remote-abi.test.ts`:
 
@@ -1534,12 +1534,12 @@ describe('fetchFourByteSignature', () => {
 
 The 4byte test encodes a real behaviour: a selector can have many registered signatures, some deliberately planted to mislead. Lowest id means earliest registered, which is the least-bad heuristic.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm vitest run test/remote-abi.test.ts`
 Expected: FAIL, cannot resolve `~~/server/abi/remote`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `server/abi/remote.ts`:
 
@@ -1589,12 +1589,12 @@ export async function fetchFourByteSignature(
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm vitest run test/remote-abi.test.ts`
 Expected: 8 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/abi/remote.ts test/remote-abi.test.ts
@@ -1615,7 +1615,7 @@ git commit -m "feat: add sourcify, blockscout, and 4byte abi lookups"
 
 **Deviation from `docs/SPEC.md` section 5, recorded deliberately:** the spec calls for reading EIP-1967 storage slots via `eth_getStorageAt`. That needs an RPC endpoint, and phase 1 is keyless. Blockscout's address endpoint already exposes a resolved `implementations` array, so use that now. When a keyed RPC source lands (spec section 4, layer two), add slot reading as a second rung here — the function signature does not change. Update `docs/SPEC.md` section 5 to describe both rungs.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `test/proxy.test.ts`:
 
@@ -1663,12 +1663,12 @@ describe('resolveImplementation', () => {
 
 The self-reference test exists because a proxy pointing at itself would send Task 11's ladder into an infinite loop.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm vitest run test/proxy.test.ts`
 Expected: FAIL, cannot resolve `~~/server/abi/proxy`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `server/abi/proxy.ts`:
 
@@ -1708,12 +1708,12 @@ export async function resolveImplementation(
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm vitest run test/proxy.test.ts`
 Expected: 5 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/abi/proxy.ts test/proxy.test.ts
@@ -1740,7 +1740,7 @@ git commit -m "feat: resolve proxy implementations before abi lookup"
 
 A resolver instance memoises per address for the life of one request, so a transaction touching the same contract twenty times does one lookup.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `test/resolve.test.ts`:
 
@@ -1827,12 +1827,12 @@ describe('createAbiResolver', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm vitest run test/resolve.test.ts`
 Expected: FAIL, cannot resolve `~~/server/abi/resolve`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `server/abi/resolve.ts`:
 
@@ -1924,12 +1924,12 @@ export function createAbiResolver(http: HttpClient, chain: ChainConfig): AbiReso
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm vitest run test/resolve.test.ts`
 Expected: 6 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/abi/resolve.ts test/resolve.test.ts
