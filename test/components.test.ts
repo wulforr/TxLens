@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
+import ArgValue from '~~/app/components/ArgValue.vue'
 import CallActivity from '~~/app/components/CallActivity.vue'
 import CallRow from '~~/app/components/CallRow.vue'
 import ProvenanceChip from '~~/app/components/ProvenanceChip.vue'
@@ -92,5 +93,40 @@ describe('CallActivity', () => {
   it('says so plainly when there is no call data, rather than rendering nothing', () => {
     const wrapper = mount(CallActivity, { props: { activity: { kind: 'none' } } })
     expect(wrapper.text()).toContain('No internal call data')
+  })
+})
+
+describe('ArgValue', () => {
+  const long = '0x'.padEnd(4000, 'a')
+
+  it('shows a short value in full', () => {
+    const wrapper = mount(ArgValue, { props: { type: 'uint256', value: '123' } })
+    expect(wrapper.text()).toContain('123')
+    expect(wrapper.find('details').exists()).toBe(false)
+  })
+
+  it('truncates an address', () => {
+    const wrapper = mount(ArgValue, {
+      props: { type: 'address', value: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' },
+    })
+    expect(wrapper.text()).toContain('0xa0b869…06eb48')
+  })
+
+  it('collapses a multi-kilobyte value behind a summary', () => {
+    // A real aggregator swap carries encoded calldata tuples running to
+    // thousands of characters. Rendered inline they bury every section below.
+    const wrapper = mount(ArgValue, { props: { type: 'bytes', value: long } })
+    expect(wrapper.find('details').exists()).toBe(true)
+    expect(wrapper.find('summary').text()).toContain('…')
+  })
+
+  it('states the exact length so nothing is silently hidden', () => {
+    const wrapper = mount(ArgValue, { props: { type: 'bytes', value: long } })
+    expect(wrapper.find('summary').text()).toContain('4,000 characters')
+  })
+
+  it('still contains the full value for copying', () => {
+    const wrapper = mount(ArgValue, { props: { type: 'bytes', value: long } })
+    expect(wrapper.find('.full').text()).toBe(long)
   })
 })

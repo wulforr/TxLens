@@ -77,7 +77,7 @@ function eth(value: string): string {
           <dl v-else class="args">
             <template v-for="arg in log.args" :key="arg.name">
               <dt>{{ arg.name }}</dt>
-              <dd>{{ arg.type === 'address' ? truncateAddress(arg.value) : arg.value }}</dd>
+              <dd><ArgValue :type="arg.type" :value="arg.value" /></dd>
             </template>
           </dl>
         </li>

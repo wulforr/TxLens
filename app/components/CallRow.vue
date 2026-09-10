@@ -32,7 +32,7 @@ const safeName = computed(() => {
     <dl v-if="call.args.length" class="args">
       <template v-for="arg in call.args" :key="arg.name">
         <dt>{{ arg.name }} <span class="type">{{ arg.type }}</span></dt>
-        <dd>{{ arg.type === 'address' ? truncateAddress(arg.value) : arg.value }}</dd>
+        <dd><ArgValue :type="arg.type" :value="arg.value" /></dd>
       </template>
     </dl>
 
