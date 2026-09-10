@@ -1,7 +1,7 @@
 import type { AssetRef } from '~~/server/flow/assets'
 import { assetKey } from '~~/server/flow/assets'
 import type { TokenMeta } from '~~/server/tokens/metadata'
-import { truncateAddress } from '~~/shared/address'
+import { truncateAddress } from './address'
 
 export const RAW_UNITS_MARKER = 'raw units, decimals unknown'
 

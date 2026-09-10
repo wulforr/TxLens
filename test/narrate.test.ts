@@ -3,10 +3,10 @@ import type { DecodedLog } from '~~/server/decode/logs'
 import { type AssetRef, NATIVE, ZERO_ADDRESS } from '~~/server/flow/assets'
 import type { FlowEdge } from '~~/server/flow/build'
 import { netPositions } from '~~/server/flow/positions'
-import { RAW_UNITS_MARKER } from '~~/server/narrate/format'
 import { narrate } from '~~/server/narrate/registry'
 import type { NarrativeContext } from '~~/server/narrate/types'
 import type { TokenMeta } from '~~/server/tokens/metadata'
+import { RAW_UNITS_MARKER } from '~~/shared/format'
 import type { RawTransaction } from '~~/shared/types'
 
 const ALICE = '0x1111111111111111111111111111111111111111' as const
@@ -21,9 +21,19 @@ const coinAsset: AssetRef = { kind: 'erc20', address: COIN }
 const tokens = new Map<string, TokenMeta>([
   [
     `erc20:${USDT}`,
-    { address: USDT, symbol: 'USDT', name: 'Tether', decimals: 6, standard: 'ERC-20' },
+    {
+      address: USDT,
+      symbol: 'USDT',
+      name: 'Tether',
+      decimals: 6,
+      standard: 'ERC-20',
+      iconUrl: null,
+    },
   ],
-  [`erc20:${COIN}`, { address: COIN, symbol: '01', name: '01', decimals: 18, standard: 'ERC-20' }],
+  [
+    `erc20:${COIN}`,
+    { address: COIN, symbol: '01', name: '01', decimals: 18, standard: 'ERC-20', iconUrl: null },
+  ],
 ])
 
 function tx(overrides: Partial<RawTransaction> = {}): RawTransaction {

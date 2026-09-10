@@ -49,6 +49,9 @@ function eth(value: string): string {
         <dd>{{ data.gasUsed }}</dd>
       </dl>
 
+      <h2>Value flow</h2>
+      <FlowSankey :flow="data.flow" :tokens="data.tokens" :sender="data.from" />
+
       <h2>Call</h2>
       <CallRow :call="data.call" />
 

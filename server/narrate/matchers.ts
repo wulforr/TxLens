@@ -1,7 +1,7 @@
 import type { AssetRef } from '~~/server/flow/assets'
 import { assetKey, isZeroAddress } from '~~/server/flow/assets'
 import { truncateAddress } from '~~/shared/address'
-import { formatAmount } from './format'
+import { formatAmount } from '~~/shared/format'
 import type { Matcher, NarrativeContext } from './types'
 
 /** Assets the sender lost and gained, ignoring zero nets. */

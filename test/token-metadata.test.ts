@@ -11,12 +11,29 @@ const nft = '0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d'
 const tokenUrl = (a: string) => `${chain.blockscoutBase}/api/v2/tokens/${a}`
 
 describe('createTokenResolver', () => {
-  it('answers from the label pack with no network call', async () => {
-    const http = fakeHttp({})
+  it('uses the label pack for symbol and decimals even with upstream down', async () => {
+    const meta = await createTokenResolver(fakeHttp({}), chain).forAddress(usdt)
+    expect(meta.symbol).toBe('USDT')
+    expect(meta.decimals).toBe(6)
+    expect(meta.iconUrl).toBeNull()
+  })
+
+  it('enriches a curated token with an upstream icon without trusting its decimals', async () => {
+    // Upstream says 99 decimals, which is wrong. The curated value must win;
+    // only the decorative icon is taken from the network.
+    const http = fakeHttp({
+      [tokenUrl(usdt)]: {
+        name: 'Wrong',
+        symbol: 'WRONG',
+        decimals: '99',
+        type: 'ERC-20',
+        icon_url: 'https://assets.example/tether.png',
+      },
+    })
     const meta = await createTokenResolver(http, chain).forAddress(usdt)
     expect(meta.symbol).toBe('USDT')
     expect(meta.decimals).toBe(6)
-    expect(http.calls).toHaveLength(0)
+    expect(meta.iconUrl).toBe('https://assets.example/tether.png')
   })
 
   it('parses blockscout decimals, which arrive as a string', async () => {
@@ -53,6 +70,7 @@ describe('createTokenResolver', () => {
       name: null,
       decimals: null,
       standard: 'unknown',
+      iconUrl: null,
     })
   })
 
@@ -61,6 +79,34 @@ describe('createTokenResolver', () => {
       [tokenUrl(unknownToken)]: { name: 'Weird', symbol: 'WRD', decimals: 'many', type: 'ERC-20' },
     })
     expect((await createTokenResolver(http, chain).forAddress(unknownToken)).decimals).toBeNull()
+  })
+
+  it('surfaces an https icon url', async () => {
+    const http = fakeHttp({
+      [tokenUrl(unknownToken)]: {
+        name: 'Tether',
+        symbol: 'USDT',
+        decimals: '6',
+        type: 'ERC-20',
+        icon_url: 'https://assets.example/tether.png',
+      },
+    })
+    expect((await createTokenResolver(http, chain).forAddress(unknownToken)).iconUrl).toBe(
+      'https://assets.example/tether.png',
+    )
+  })
+
+  it('drops a non-https icon url rather than rendering mixed content', async () => {
+    const http = fakeHttp({
+      [tokenUrl(unknownToken)]: {
+        name: 'X',
+        symbol: 'X',
+        decimals: '18',
+        type: 'ERC-20',
+        icon_url: 'http://insecure.example/x.png',
+      },
+    })
+    expect((await createTokenResolver(http, chain).forAddress(unknownToken)).iconUrl).toBeNull()
   })
 
   it('memoises repeated lookups', async () => {
