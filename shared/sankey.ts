@@ -32,6 +32,12 @@ export interface SankeyModel {
   links: SankeyLink[]
   /** Edges removed to make the graph acyclic, listed rather than hidden. */
   omitted: SankeyLink[]
+  /**
+   * Transfers of exactly zero, which are real events but cannot be drawn.
+   * Counted so the diagram can account for them instead of leaving a reader
+   * wondering where several hundred events went.
+   */
+  zeroValue: number
   assets: { key: string; symbol: string; iconUrl: string | null }[]
   tooComplex: boolean
 }
@@ -104,7 +110,9 @@ export function toSankeyModel(
   sender: string,
   nativeSymbol = 'ETH',
 ): SankeyModel {
-  const usable = flow.filter((edge) => edge.from !== edge.to && BigInt(edge.amount) > 0n)
+  const drawable = flow.filter((edge) => edge.from !== edge.to)
+  const usable = drawable.filter((edge) => BigInt(edge.amount) > 0n)
+  const zeroValue = drawable.length - usable.length
 
   const totals = new Map<string, bigint>()
   for (const edge of usable) {
@@ -149,5 +157,12 @@ export function toSankeyModel(
     return { key, symbol: link?.symbol ?? '?', iconUrl: link?.iconUrl ?? null }
   })
 
-  return { nodes, links: kept, omitted, assets, tooComplex: nodes.length > MAX_NODES }
+  return {
+    nodes,
+    links: kept,
+    omitted,
+    zeroValue,
+    assets,
+    tooComplex: nodes.length > MAX_NODES,
+  }
 }

@@ -81,6 +81,14 @@ describe('toSankeyModel', () => {
     expect(model.links).toHaveLength(0)
   })
 
+  it('counts undrawable zero-value transfers instead of silently losing them', () => {
+    // A batch mint emits hundreds of zero-value Transfers alongside one real
+    // one. Drawing nothing for them is right; saying nothing about them is not.
+    const model = toSankeyModel([edge(A, B, '0'), edge(A, C, '0'), edge(A, B, '500')], tokens, A)
+    expect(model.zeroValue).toBe(2)
+    expect(model.links).toHaveLength(1)
+  })
+
   it('breaks a cycle so the layout terminates, and reports what it removed', () => {
     // d3-sankey loops forever on a cycle. Dropping an edge silently would make
     // the picture wrong; dropping the smallest and listing it does not.

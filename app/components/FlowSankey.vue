@@ -103,7 +103,7 @@ const path = sankeyLinkHorizontal()
               :height="Math.max(2, (node.y1 ?? 0) - (node.y0 ?? 0))"
               :fill="node.isSender ? 'var(--accent)' : 'var(--text-faint)'"
             >
-              <title>{{ node.id }}</title>
+              <title>{{ node.address }}</title>
             </rect>
             <text
               v-for="node in layout.graph.nodes"
@@ -141,6 +141,11 @@ const path = sankeyLinkHorizontal()
           </span>
         </li>
       </ul>
+
+      <p v-if="model.zeroValue > 0" class="note">
+        {{ model.zeroValue }} transfer(s) of exactly zero are not drawn — they moved no value,
+        but they did happen.
+      </p>
 
       <p class="caveat">
         Widths compare movements of the same asset. They are not comparable between assets.
