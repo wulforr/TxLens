@@ -1,6 +1,11 @@
 import type { Address, Hex } from 'viem'
 import type { DecodedCall } from '~~/server/decode/calls'
 import type { DecodedLog } from '~~/server/decode/logs'
+import type { AssetRef } from '~~/server/flow/assets'
+import { assetKey } from '~~/server/flow/assets'
+import type { FlowEdge, FlowOrigin } from '~~/server/flow/build'
+import type { Narrative } from '~~/server/narrate/types'
+import type { TokenMeta } from '~~/server/tokens/metadata'
 import type { CallKind, Coverage, RawTransaction, TraceProvenance } from './types'
 
 export interface WireFlatCall {
@@ -13,7 +18,23 @@ export interface WireFlatCall {
 
 export type WireActivity = { kind: 'flat'; calls: WireFlatCall[] } | { kind: 'none' }
 
+export interface WireFlowEdge {
+  from: Address
+  to: Address
+  asset: AssetRef
+  assetKey: string
+  amount: string
+  origin: FlowOrigin
+  gross?: string
+  via?: Address[]
+  isDust?: boolean
+}
+
 export interface TxPayload {
+  narrative: Narrative
+  flow: WireFlowEdge[]
+  /** assetKey -> token metadata, so the client can format amounts. */
+  tokens: Record<string, TokenMeta>
   chainId: number
   hash: Hex
   blockNumber: string
@@ -34,7 +55,12 @@ export interface TxPayload {
   sourceName: string
 }
 
-export function toWire(tx: RawTransaction, call: DecodedCall, logs: DecodedLog[]): TxPayload {
+export function toWire(
+  tx: RawTransaction,
+  call: DecodedCall,
+  logs: DecodedLog[],
+  extra: { narrative: Narrative; flow: FlowEdge[]; tokens: Map<string, TokenMeta> },
+): TxPayload {
   const activity: WireActivity =
     tx.activity.kind === 'flat'
       ? {
@@ -50,6 +76,19 @@ export function toWire(tx: RawTransaction, call: DecodedCall, logs: DecodedLog[]
       : { kind: 'none' }
 
   return {
+    narrative: extra.narrative,
+    flow: extra.flow.map((edge) => ({
+      from: edge.from,
+      to: edge.to,
+      asset: edge.asset,
+      assetKey: assetKey(edge.asset),
+      amount: edge.amount.toString(),
+      origin: edge.origin,
+      ...(edge.gross === undefined ? {} : { gross: edge.gross.toString() }),
+      ...(edge.via === undefined ? {} : { via: edge.via }),
+      ...(edge.isDust === undefined ? {} : { isDust: edge.isDust }),
+    })),
+    tokens: Object.fromEntries(extra.tokens),
     chainId: tx.chainId,
     hash: tx.hash,
     blockNumber: tx.blockNumber.toString(),

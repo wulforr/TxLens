@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import ArgValue from '~~/app/components/ArgValue.vue'
 import CallActivity from '~~/app/components/CallActivity.vue'
 import CallRow from '~~/app/components/CallRow.vue'
+import Narrative from '~~/app/components/Narrative.vue'
 import ProvenanceChip from '~~/app/components/ProvenanceChip.vue'
 
 describe('ProvenanceChip', () => {
@@ -128,5 +129,34 @@ describe('ArgValue', () => {
   it('still contains the full value for copying', () => {
     const wrapper = mount(ArgValue, { props: { type: 'bytes', value: long } })
     expect(wrapper.find('.full').text()).toBe(long)
+  })
+})
+
+describe('Narrative', () => {
+  const base = {
+    headline: 'Swapped 935.11816 USDT for 2,336.944687 01',
+    details: ['0x222222…222222 kept 2.805354 USDT as a fee.'],
+    matcher: 'swap',
+    confidence: 'high' as const,
+  }
+
+  it('leads with the headline', () => {
+    const wrapper = mount(Narrative, { props: { narrative: base } })
+    expect(wrapper.find('h1').text()).toBe(base.headline)
+  })
+
+  it('lists the supporting details', () => {
+    const wrapper = mount(Narrative, { props: { narrative: base } })
+    expect(wrapper.findAll('li')).toHaveLength(1)
+  })
+
+  it('warns when the summary was computed from incomplete data', () => {
+    const wrapper = mount(Narrative, { props: { narrative: { ...base, confidence: 'low' } } })
+    expect(wrapper.text()).toContain('may be wrong')
+  })
+
+  it('shows no warning at high confidence', () => {
+    const wrapper = mount(Narrative, { props: { narrative: base } })
+    expect(wrapper.text()).not.toContain('may be wrong')
   })
 })

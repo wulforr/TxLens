@@ -25,6 +25,8 @@ function eth(value: string): string {
     </div>
 
     <article v-else-if="data">
+      <Narrative :narrative="data.narrative" />
+
       <header class="summary">
         <code class="hash">{{ data.hash }}</code>
         <div class="meta">
