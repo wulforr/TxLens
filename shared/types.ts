@@ -51,6 +51,19 @@ export interface RawLog {
   logIndex: number
 }
 
+/**
+ * How complete one section of the response is.
+ * `unavailable` is not the same as an empty section: it means the request
+ * failed, and presenting that as "no data" is how a transient upstream error
+ * becomes a wrong answer on screen.
+ */
+export type SectionStatus = 'complete' | 'truncated' | 'unavailable'
+
+export interface Coverage {
+  logs: SectionStatus
+  calls: SectionStatus
+}
+
 export interface RawTransaction {
   chainId: number
   hash: Hex
@@ -66,6 +79,7 @@ export interface RawTransaction {
   effectiveGasPrice: bigint
   logs: RawLog[]
   activity: CallActivity
+  coverage: Coverage
   provenance: TraceProvenance
   sourceName: string
 }

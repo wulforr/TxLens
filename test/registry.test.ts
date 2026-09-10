@@ -24,6 +24,7 @@ function stubTx(sourceName: string): RawTransaction {
     effectiveGasPrice: 0n,
     logs: [],
     activity: { kind: 'none' },
+    coverage: { logs: 'complete', calls: 'complete' },
     provenance: 'logsOnly',
     sourceName,
   }

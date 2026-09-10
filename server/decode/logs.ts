@@ -66,7 +66,9 @@ function attempt(
     })
 
     return {
-      eventName,
+      // viem types eventName as possibly undefined for some abi shapes, and
+      // DecodedLog promises string | null. Coerce at the boundary.
+      eventName: eventName ?? null,
       signature: `${eventName}(${inputs.map((i) => i.type).join(',')})`,
       args: mapped,
     }

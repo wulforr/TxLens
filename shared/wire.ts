@@ -1,7 +1,7 @@
 import type { Address, Hex } from 'viem'
 import type { DecodedCall } from '~~/server/decode/calls'
 import type { DecodedLog } from '~~/server/decode/logs'
-import type { CallKind, RawTransaction, TraceProvenance } from './types'
+import type { CallKind, Coverage, RawTransaction, TraceProvenance } from './types'
 
 export interface WireFlatCall {
   kind: CallKind
@@ -29,6 +29,7 @@ export interface TxPayload {
   call: DecodedCall
   logs: DecodedLog[]
   activity: WireActivity
+  coverage: Coverage
   provenance: TraceProvenance
   sourceName: string
 }
@@ -64,6 +65,7 @@ export function toWire(tx: RawTransaction, call: DecodedCall, logs: DecodedLog[]
     call,
     logs,
     activity,
+    coverage: tx.coverage,
     provenance: tx.provenance,
     sourceName: tx.sourceName,
   }

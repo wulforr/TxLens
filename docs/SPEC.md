@@ -116,6 +116,22 @@ tried in order, with the answer tagged by which layer served it:
 3. **Reconstruction from logs alone** — no call tree, but token flows and the
    narrative still work. Degraded, and labelled as such in the UI.
 
+**Call data is a three-way union, not an optional tree.** Blockscout returns internal
+transactions as a *flat list* with no parent information, so only a real `callTracer`
+can ever produce nesting. The domain model is therefore
+`{ kind: 'tree' } | { kind: 'flat' } | { kind: 'none' }`, which forces the UI to render
+the degraded case honestly rather than drawing a one-level hierarchy that implies
+structure the source never provided.
+
+**Both sub-endpoints paginate at 50 items.** Reading one page silently truncated large
+transactions: a real 6.8M-gas transaction returned 50 logs and zero internal calls, when
+it actually has 400 and 900. Pagination follows `next_page_params` up to a 20-page cap.
+
+**Coverage is reported per section**, as `complete | truncated | unavailable`, and
+surfaced on the page. `unavailable` is deliberately distinct from an empty section: a
+transient upstream failure that reads as "no internal calls" is a wrong answer wearing
+the costume of a right one.
+
 The UI carries a small provenance chip: `trace: callTracer` / `trace: internal txs`
 / `trace: unavailable — flows only`. Being explicit about data quality is more
 credible than pretending every transaction gets the same treatment.
@@ -128,11 +144,19 @@ Resolution order per address:
 1. **Local label pack** — a curated JSON of well-known contracts (major routers,
    bridges, stablecoins, common proxies) committed to the repo. Instant, offline,
    and gives the good demo transactions perfect output.
-2. **Sourcify** — open, free, no key.
+2. **Sourcify** — open, free, no key. Use the v2 contract endpoint
+   (`/server/v2/contract/{chainId}/{address}?fields=abi`). The older
+   `repo.sourcify.dev/contracts/{full,partial}_match/...` path redirects to a 404 that
+   returns HTML, which fails *safely* as a JSON parse error — meaning this rung would
+   sit permanently dead with green tests and no visible symptom. v2 also accepts either
+   address casing, so the EIP-55 checksumming this spec previously required is moot.
 3. **Explorer verified-source API** for the chain.
-4. **Proxy detection** — read EIP-1967 implementation and beacon slots via
-   `eth_getStorageAt`, then resolve the implementation's ABI instead. Skipping this
-   step is why most decoders show `0x` for half of all modern transactions.
+4. **Proxy detection**, in two rungs. First Blockscout's already-resolved
+   `implementations` field, which is keyless and available now — note it keys the
+   address as `address_hash`, not `address`. Second, once a keyed RPC source exists,
+   reading the EIP-1967 implementation and beacon slots via `eth_getStorageAt`.
+   Skipping proxy detection entirely is why most decoders show `0x` for half of all
+   modern transactions.
 5. **4byte selector lookup** — gives a function *name* but no argument types, so
    arguments render as raw words with a "signature only" marker.
 6. **Unknown** — render the selector and the calldata, honestly.

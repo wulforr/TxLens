@@ -1,0 +1,20 @@
+{
+  // Nuxt's generated project references cover app/, server/ and shared/, but
+  // NOT test/ — so type errors in test code went completely unnoticed. This
+  // config exists solely so `pnpm typecheck` also checks the tests.
+  "extends": "./.nuxt/tsconfig.shared.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    // Tests index arrays they just built (`result.items[0]`). Requiring a
+    // guard on every one of those adds noise without catching anything, so
+    // this single check is relaxed for test code only — the rest of strict
+    // mode still applies.
+    "noUncheckedIndexedAccess": false,
+    "typeRoots": ["./node_modules/.pnpm/node_modules/@types", "./node_modules/@types"]
+  },
+  "include": ["test/**/*.ts", "shared/**/*.ts", "server/**/*.ts"],
+  // server/api uses Nitro auto-imports (defineEventHandler, createError) that
+  // only exist inside Nuxt's own program. Nuxt's typecheck already covers it.
+  "exclude": ["server/api/**"]
+}

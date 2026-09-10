@@ -28,6 +28,7 @@ const tx: RawTransaction = {
       },
     ],
   },
+  coverage: { logs: 'complete', calls: 'complete' },
   provenance: 'internalTransactions',
   sourceName: 'blockscout',
 }
@@ -73,5 +74,9 @@ describe('toWire', () => {
     const wire = toWire(tx, call, [])
     expect(wire.provenance).toBe('internalTransactions')
     expect(wire.sourceName).toBe('blockscout')
+  })
+
+  it('carries coverage through so the ui can flag an incomplete read', () => {
+    expect(toWire(tx, call, []).coverage).toEqual({ logs: 'complete', calls: 'complete' })
   })
 })
