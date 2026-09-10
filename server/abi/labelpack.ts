@@ -6,6 +6,8 @@ export interface LabelEntry {
   address: Address
   name: string
   abi: Abi | null
+  symbol?: string
+  decimals?: number
 }
 
 export const LABELS: readonly LabelEntry[] = RAW_LABELS.map((entry) => ({

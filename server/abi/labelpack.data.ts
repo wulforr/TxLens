@@ -36,6 +36,9 @@ interface RawLabel {
   address: string
   name: string
   abi: Abi | null
+  /** Present only for tokens. Lets the flow layer format amounts with no network call. */
+  symbol?: string
+  decimals?: number
 }
 
 /**
@@ -50,6 +53,8 @@ export const RAW_LABELS: RawLabel[] = [
     address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
     name: 'USDC',
     abi: ERC20_ABI,
+    symbol: 'USDC',
+    decimals: 6,
   },
   // TetherToken, token symbol USDT, 6 decimals. Note: its transfer/approve
   // return nothing rather than bool. That only affects return values, which
@@ -59,6 +64,8 @@ export const RAW_LABELS: RawLabel[] = [
     address: '0xdac17f958d2ee523a2206206994597c13d831ec7',
     name: 'USDT',
     abi: ERC20_ABI,
+    symbol: 'USDT',
+    decimals: 6,
   },
   // Dai, token symbol DAI, 18 decimals.
   {
@@ -66,6 +73,8 @@ export const RAW_LABELS: RawLabel[] = [
     address: '0x6b175474e89094c44da98b954eedeac495271d0f',
     name: 'DAI',
     abi: ERC20_ABI,
+    symbol: 'DAI',
+    decimals: 18,
   },
   // WETH9, token symbol WETH, 18 decimals.
   {
@@ -73,5 +82,7 @@ export const RAW_LABELS: RawLabel[] = [
     address: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
     name: 'WETH',
     abi: [...WETH_ABI, ...ERC20_ABI],
+    symbol: 'WETH',
+    decimals: 18,
   },
 ]
