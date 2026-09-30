@@ -1,12 +1,21 @@
 // @vitest-environment happy-dom
-import { mount } from '@vue/test-utils'
+import { config, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
+import AmountChip from '~~/app/components/AmountChip.vue'
 import ArgValue from '~~/app/components/ArgValue.vue'
 import CallActivity from '~~/app/components/CallActivity.vue'
 import CallRow from '~~/app/components/CallRow.vue'
+import HashForm from '~~/app/components/HashForm.vue'
+import Icon from '~~/app/components/Icon.vue'
 import Narrative from '~~/app/components/Narrative.vue'
+import Party from '~~/app/components/Party.vue'
+import PartyList from '~~/app/components/PartyList.vue'
 import ProvenanceChip from '~~/app/components/ProvenanceChip.vue'
+import StepList from '~~/app/components/StepList.vue'
 import TokenBadge from '~~/app/components/TokenBadge.vue'
+import type { NarrativePart } from '~~/shared/format'
+
+config.global.components = { AmountChip, Icon, Party, TokenBadge, ArgValue }
 
 describe('ProvenanceChip', () => {
   it('names the degraded source plainly', () => {
@@ -157,7 +166,7 @@ describe('Narrative', () => {
         address: '0x32708538a107253b51a735a724330a23106ca4ca',
         raw: false,
       },
-    ],
+    ] as NarrativePart[],
     details: ['0x222222…222222 kept 2.805354 USDT as a fee.'],
     matcher: 'swap',
     confidence: 'high' as const,
@@ -171,7 +180,7 @@ describe('Narrative', () => {
     expect(wrapper.find('h1').attributes('aria-label')).toBe(base.headline)
   })
 
-  it('renders each token as a chip with its icon, or a lettered disc without one', () => {
+  it('renders each token as a chip with its icon, or a generic coin when its symbol starts with a digit', () => {
     const wrapper = mount(Narrative, {
       props: { narrative: base },
       global: { components: { TokenBadge } },
@@ -180,7 +189,8 @@ describe('Narrative', () => {
     expect(amounts).toHaveLength(2)
     expect(amounts[0].find('img').attributes('src')).toBe('https://i.example/usdt.png')
     expect(amounts[1].find('img').exists()).toBe(false)
-    expect(amounts[1].find('.fallback').text()).toBe('0')
+    expect(amounts[1].find('.fallback').exists()).toBe(false)
+    expect(amounts[1].find('.generic').exists()).toBe(true)
     expect(amounts[1].find('.symbol').text()).toBe('01')
   })
 
@@ -206,5 +216,156 @@ describe('Narrative', () => {
       global: { components: { TokenBadge } },
     })
     expect(wrapper.text()).not.toContain('may be wrong')
+  })
+})
+
+describe('Narrative USD', () => {
+  it('shows a dollar value next to a priced amount', () => {
+    const part = {
+      kind: 'amount' as const,
+      text: '935.11816 USDT',
+      value: '935.11816',
+      symbol: 'USDT',
+      iconUrl: null,
+      address: '0xdac17f958d2ee523a2206206994597c13d831ec7',
+      raw: false,
+      assetKey: 'erc20:0xdac17f958d2ee523a2206206994597c13d831ec7',
+      units: '935118160',
+    }
+    const wrapper = mount(Narrative, {
+      props: {
+        narrative: {
+          headline: 'Sent 935.11816 USDT',
+          parts: [{ kind: 'text' as const, text: 'Sent ' }, part],
+          details: [],
+          matcher: 'transfer',
+          confidence: 'high' as const,
+        },
+        tokens: {
+          [part.assetKey]: {
+            address: part.address as `0x${string}`,
+            symbol: 'USDT',
+            name: 'Tether',
+            decimals: 6,
+            standard: 'ERC-20' as const,
+            iconUrl: null,
+          },
+        },
+        prices: { [part.assetKey]: 1 },
+      },
+    })
+    expect(wrapper.find('.usd').text()).toBe('≈ $935.12')
+  })
+})
+
+describe('TokenBadge', () => {
+  it('uses a letter disc only when the symbol starts with a letter', () => {
+    expect(
+      mount(TokenBadge, { props: { symbol: 'WBTC' } })
+        .find('.fallback')
+        .text(),
+    ).toBe('W')
+    expect(
+      mount(TokenBadge, { props: { symbol: '01' } })
+        .find('.fallback')
+        .exists(),
+    ).toBe(false)
+  })
+})
+
+describe('StepList', () => {
+  const people = {
+    '0xaaaa000000000000000000000000000000000001': {
+      address: '0xaaaa000000000000000000000000000000000001',
+      label: 'Sender',
+      role: 'sender' as const,
+    },
+    '0xaaaa000000000000000000000000000000000002': {
+      address: '0xaaaa000000000000000000000000000000000002',
+      label: 'Wallet A',
+      role: 'wallet' as const,
+    },
+    '0xaaaa000000000000000000000000000000000003': {
+      address: '0xaaaa000000000000000000000000000000000003',
+      label: 'Contract A',
+      role: 'contract' as const,
+    },
+  }
+  const amount = {
+    kind: 'amount' as const,
+    text: '0.5 ETH',
+    value: '0.5',
+    symbol: 'ETH',
+    iconUrl: null,
+    address: null,
+    raw: false,
+    assetKey: 'native',
+    units: '500000000000000000',
+  }
+  const step = (overrides = {}) => ({
+    from: '0xaaaa000000000000000000000000000000000001',
+    to: '0xaaaa000000000000000000000000000000000002',
+    kind: 'transfer' as const,
+    amount,
+    usd: 1240,
+    via: [],
+    ...overrides,
+  })
+
+  it('reads as a sentence with names instead of hex', () => {
+    const text = mount(StepList, { props: { steps: [step()], people } }).text()
+    expect(text).toContain('Sender')
+    expect(text).toContain('sent')
+    expect(text).toContain('Wallet A')
+    expect(text).toContain('≈ $1,240')
+    expect(text).not.toContain('0xaaaa')
+  })
+
+  it('names the contract a transfer passed through', () => {
+    const text = mount(StepList, {
+      props: { steps: [step({ via: ['0xaaaa000000000000000000000000000000000003'] })], people },
+    }).text()
+    expect(text).toContain('passing through')
+    expect(text).toContain('Contract A')
+  })
+
+  it('caps a long list behind a button that says how many there are', () => {
+    const wrapper = mount(StepList, {
+      props: { steps: Array.from({ length: 20 }, () => step()), people },
+    })
+    expect(wrapper.findAll('li')).toHaveLength(12)
+    expect(wrapper.find('button.more').text()).toBe('Show all 20 steps')
+  })
+})
+
+describe('PartyList', () => {
+  it('gives each address a copy button and an explorer link with a spoken name', () => {
+    const wrapper = mount(PartyList, {
+      props: {
+        people: [
+          {
+            address: '0xaaaa000000000000000000000000000000000002',
+            label: 'Wallet A',
+            role: 'wallet' as const,
+          },
+        ],
+        explorerBase: 'https://etherscan.io',
+      },
+    })
+    expect(wrapper.find('button').attributes('aria-label')).toBe(
+      'Copy the full address of Wallet A',
+    )
+    expect(wrapper.find('a').attributes('href')).toBe(
+      'https://etherscan.io/address/0xaaaa000000000000000000000000000000000002',
+    )
+  })
+})
+
+describe('HashForm', () => {
+  it('says what a valid transaction id looks like when given junk', async () => {
+    const wrapper = mount(HashForm)
+    await wrapper.find('input').setValue('0xdeadbeef')
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.find('[role="alert"]').text()).toContain('64 characters')
   })
 })

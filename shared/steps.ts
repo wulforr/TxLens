@@ -71,6 +71,8 @@ export interface Step {
   kind: 'transfer' | 'mint' | 'burn'
   amount: NarrativePart
   usd: number | null
+  /** Contracts the value passed straight through on the way ("via Contract A"). */
+  via: string[]
 }
 
 /** One plain-language step per value movement, in the order it happened. */
@@ -102,8 +104,22 @@ export function toSteps(
           price !== undefined && typeof decimals === 'number'
             ? (Number(amount) / 10 ** decimals) * price
             : null,
+        via: edge.via ?? [],
       }
     })
+}
+
+/** USD for an amount part, when its asset is priced and its decimals known. */
+export function partUsd(
+  part: NarrativePart,
+  tokens: Record<string, TokenMeta>,
+  prices: Record<string, number>,
+): number | null {
+  if (part.kind !== 'amount' || part.raw) return null
+  const price = prices[part.assetKey]
+  const decimals = part.assetKey === 'native' ? 18 : tokens[part.assetKey]?.decimals
+  if (price === undefined || typeof decimals !== 'number') return null
+  return (Number(part.units) / 10 ** decimals) * price
 }
 
 export function usdText(value: number): string {

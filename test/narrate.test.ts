@@ -182,6 +182,15 @@ describe('narrate', () => {
     expect(result.headline).toBe('Sent 5 USDT to 0x333333…333333')
   })
 
+  it('names the recipient in the headline when the source knows it', () => {
+    const result = narrate(
+      ctx([edge(ALICE, MAKER, 5000000n, usdtAsset)], {
+        names: { [MAKER]: { name: 'Lido: Execution Layer Rewards Vault', isContract: true } },
+      }),
+    )
+    expect(result.headline).toBe('Sent 5 USDT to Lido: Execution Layer Rewards Vault')
+  })
+
   it('describes a mint', () => {
     const result = narrate(ctx([edge(ZERO_ADDRESS, ALICE, 1000000n, usdtAsset)]))
     expect(result.matcher).toBe('mint')

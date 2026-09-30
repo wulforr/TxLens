@@ -23,7 +23,9 @@ const safeName = computed(() => {
       <span v-if="call.confidence === 'signatureOnly'" class="flag">
         signature only — arguments not decoded
       </span>
-      <span v-else-if="call.confidence === 'raw'" class="flag">could not decode</span>
+      <span v-else-if="call.confidence === 'raw'" class="flag">
+        function name unknown — this contract hasn’t published its code
+      </span>
       <span v-else-if="call.confidence === 'nativeTransfer'" class="flag">
         plain transfer, no calldata
       </span>
@@ -67,7 +69,7 @@ const safeName = computed(() => {
 }
 .flag {
   font-size: 0.75rem;
-  color: var(--warn);
+  color: var(--text-dim);
 }
 .args {
   display: grid;
@@ -92,11 +94,5 @@ dd {
   margin: 0.5rem 0 0;
   font-size: 0.75rem;
   color: var(--text-faint);
-}
-.row[data-confidence='raw'] {
-  border-left: 2px solid var(--bad);
-}
-.row[data-confidence='signatureOnly'] {
-  border-left: 2px solid var(--warn);
 }
 </style>

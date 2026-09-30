@@ -26,7 +26,7 @@ const formattedLength = computed(() => display.value.length.toLocaleString('en-U
 
 <template>
   <details v-if="isLong" class="long">
-    <summary>
+    <summary :aria-label="`${type} value, ${formattedLength} characters. Expand to show it.`">
       <code>{{ preview }}</code>
       <span class="meta">{{ formattedLength }} characters</span>
     </summary>

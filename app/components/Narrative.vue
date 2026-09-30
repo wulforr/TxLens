@@ -1,7 +1,16 @@
 <script setup lang="ts">
 import type { Narrative } from '~~/server/narrate/types'
+import type { TokenMeta } from '~~/server/tokens/metadata'
+import { partUsd } from '~~/shared/steps'
 
-defineProps<{ narrative: Narrative }>()
+withDefaults(
+  defineProps<{
+    narrative: Narrative
+    tokens?: Record<string, TokenMeta>
+    prices?: Record<string, number>
+  }>(),
+  { tokens: () => ({}), prices: () => ({}) },
+)
 </script>
 
 <template>
@@ -10,12 +19,7 @@ defineProps<{ narrative: Narrative }>()
       <template v-if="narrative.parts?.length">
         <template v-for="(part, index) in narrative.parts" :key="index">
           <template v-if="part.kind === 'text'">{{ part.text }}</template>
-          <!-- nowrap: a number must never be split from its token -->
-          <span v-else class="amount" :title="part.address ?? part.symbol">
-            <span>{{ part.value }}</span>
-            <TokenBadge class="token" :symbol="part.symbol" :icon-url="part.iconUrl" :size="20" />
-            <span v-if="part.raw" class="raw">raw units</span>
-          </span>
+          <AmountChip v-else :part="part" :usd="partUsd(part, tokens, prices)" :size="20" />
         </template>
       </template>
       <template v-else>{{ narrative.headline }}</template>
@@ -30,50 +34,30 @@ defineProps<{ narrative: Narrative }>()
 </template>
 
 <style scoped>
-.narrative {
-  margin-bottom: 2.5rem;
-}
 h1 {
-  font-size: 1.45rem;
-  font-weight: 500;
-  line-height: 1.6;
+  font-size: clamp(1.4rem, 1.1rem + 1.4vw, 1.9rem);
+  font-weight: 560;
+  line-height: 1.55;
+  letter-spacing: -0.015em;
   margin: 0;
-  max-width: 34ch;
-  font-variant-numeric: tabular-nums;
-}
-.amount {
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4ch;
-}
-/* The symbol sits in a pill so it can't be read as more digits. */
-.token {
-  padding: 0.1em 0.5em 0.1em 0.25em;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--bg-raised);
-  font-size: 0.8em;
-}
-.raw {
-  font-size: 0.55em;
-  color: var(--warn);
+  max-width: 30ch;
+  text-wrap: balance;
 }
 .details {
   list-style: none;
-  margin: 0.85rem 0 0;
+  margin: 1rem 0 0;
   padding: 0;
   display: grid;
-  gap: 0.25rem;
+  gap: 0.3rem;
 }
 .details li {
   color: var(--text-dim);
-  font-size: 0.875rem;
-  max-width: 62ch;
+  font-size: 0.925rem;
+  max-width: 64ch;
 }
 .caution {
   color: var(--warn);
-  font-size: 0.8rem;
-  margin: 0.85rem 0 0;
+  font-size: 0.85rem;
+  margin: 1rem 0 0;
 }
 </style>

@@ -68,6 +68,9 @@ export type NarrativePart =
       address: string | null
       /** Decimals unknown: value is in raw units. */
       raw: boolean
+      /** For pricing on the client: which asset, and how many base units. */
+      assetKey: string
+      units: string
     }
 
 export const text = (value: string): NarrativePart => ({ kind: 'text', text: value })
@@ -79,6 +82,7 @@ export function amountPart(
   nativeSymbol = 'ETH',
 ): NarrativePart {
   const full = formatAmount(amount, asset, tokens, nativeSymbol)
+  const priced = { assetKey: assetKey(asset), units: amount.toString() }
   if (asset.kind === 'native') {
     return {
       kind: 'amount',
@@ -88,6 +92,7 @@ export function amountPart(
       iconUrl: null,
       address: null,
       raw: false,
+      ...priced,
     }
   }
   const meta = tokens.get(assetKey(asset))
@@ -98,6 +103,7 @@ export function amountPart(
     symbol,
     iconUrl: meta?.iconUrl ?? null,
     address: asset.address,
+    ...priced,
   }
   if (asset.kind === 'nft') return { ...base, value: `#${asset.tokenId}`, raw: false }
   const raw = meta?.decimals === null || meta?.decimals === undefined

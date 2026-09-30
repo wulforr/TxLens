@@ -1,189 +1,307 @@
 <script setup lang="ts">
-import { formatEther } from 'viem'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { truncateAddress } from '~~/shared/address'
+import { getChain } from '~~/shared/chains'
+import { formatUnits } from '~~/shared/format'
+import { labelParticipants, toSteps, usdText } from '~~/shared/steps'
 import type { TxPayload } from '~~/shared/wire'
 
 const route = useRoute()
-const chain = route.params.chain as string
+const chainSlug = route.params.chain as string
 const hash = route.params.hash as string
+const chain = getChain(chainSlug)
 
-const { data, error, pending } = await useFetch<TxPayload>(`/api/tx/${chain}/${hash}`)
+// Client-only and lazy: the shell and skeleton paint immediately instead of the
+// page freezing while a large transaction decodes. Cached ones return in ms.
+const { data, error, pending } = useFetch<TxPayload>(`/api/tx/${chainSlug}/${hash}`, {
+  server: false,
+  lazy: true,
+})
 
-function eth(value: string): string {
-  return `${formatEther(BigInt(value))} ETH`
-}
+// Honest progress: these are the real stages, but we can't measure them, so the
+// copy follows elapsed time and never claims a percentage.
+const elapsed = ref(0)
+let ticker: ReturnType<typeof setInterval> | undefined
+// Browser only: setup also runs during server rendering, where a timer leaks.
+onMounted(() => {
+  ticker = setInterval(() => (elapsed.value += 1), 1000)
+})
+watch(pending, (now) => {
+  if (!now) clearInterval(ticker)
+})
+onBeforeUnmount(() => clearInterval(ticker))
+const stage = computed(() =>
+  elapsed.value < 4
+    ? 'Fetching the transaction from Ethereum…'
+    : elapsed.value < 12
+      ? 'Reading every token movement and naming the contracts involved…'
+      : 'This is a big transaction. The first explanation can take up to a minute; after that it loads instantly.',
+)
+
+const people = computed(() => {
+  if (!data.value) return {}
+  const d = data.value
+  const order = [
+    d.from,
+    ...toSteps(d.flow, d.tokens, d.prices, 'ETH').flatMap((s) => [s.from, ...s.via, s.to]),
+    ...(d.to ? [d.to] : []),
+    ...d.logs.map((l) => l.address),
+    ...(d.activity.kind === 'flat'
+      ? d.activity.calls.flatMap((c) => [c.from, c.to ?? d.from])
+      : []),
+  ]
+  return labelParticipants(order, d.from, d.names, d.tokens)
+})
+
+const steps = computed(() =>
+  data.value ? toSteps(data.value.flow, data.value.tokens, data.value.prices, 'ETH') : [],
+)
+
+/** Everyone who appears in a step, in the order they appear — the ones worth listing. */
+const involved = computed(() => {
+  const seen = new Set<string>()
+  const out = []
+  for (const address of [
+    data.value?.from ?? '',
+    ...steps.value.flatMap((s) => [s.from, ...s.via, s.to]),
+  ]) {
+    const person = people.value[address]
+    if (!person || person.role === 'zero' || seen.has(address)) continue
+    seen.add(address)
+    out.push(person)
+  }
+  return out
+})
+
+const when = computed(() =>
+  data.value
+    ? new Date(data.value.timestamp * 1000).toLocaleString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'UTC',
+        timeZoneName: 'short',
+      })
+    : '',
+)
+
+const fee = computed(() => {
+  if (!data.value) return ''
+  const wei = BigInt(data.value.feeWei)
+  const price = data.value.prices.native
+  const usd = price === undefined ? '' : ` (${usdText((Number(wei) / 1e18) * price)})`
+  return `${formatUnits(wei, 18)} ETH${usd}`
+})
+
+const failure = computed(() => {
+  const status = error.value?.statusCode
+  const message = error.value?.statusMessage
+  if (status === 400 && message === 'unknown chain')
+    return {
+      title: 'That network isn’t supported',
+      body: 'TxLens explains Ethereum transactions only, for now.',
+    }
+  if (status === 400)
+    return {
+      title: 'That isn’t a transaction ID',
+      body: 'A transaction ID starts with 0x, followed by 64 characters using 0–9 and a–f. Check you copied the whole thing.',
+    }
+  if (status === 404)
+    return {
+      title: 'No transaction with that ID on Ethereum',
+      body: 'Check you copied the whole ID, and that it’s from Ethereum rather than another network such as Base or Polygon.',
+    }
+  return {
+    title: 'The data source didn’t answer',
+    body: 'This is on our side, not yours. Try again in a moment.',
+  }
+})
+
+useHead({
+  title: computed(() =>
+    data.value
+      ? `${data.value.narrative.headline} · TxLens`
+      : pending.value
+        ? 'Explaining… · TxLens'
+        : 'TxLens',
+  ),
+})
 </script>
 
 <template>
   <div>
-    <p v-if="pending">Decoding…</p>
+    <div v-if="pending" class="loading" role="status" aria-live="polite">
+      <div class="skeleton headline" />
+      <div class="skeleton line" />
+      <div class="skeleton line short" />
+      <p class="stage">{{ stage }}</p>
+    </div>
 
     <div v-else-if="error" class="failed" role="alert">
-      <h1>Could not decode this transaction</h1>
-      <p>{{ error.statusMessage ?? 'Something went wrong upstream.' }}</p>
-      <NuxtLink to="/">Try another hash</NuxtLink>
+      <h1>{{ failure.title }}</h1>
+      <p>{{ failure.body }}</p>
+      <HashForm label="Try another transaction ID" />
     </div>
 
     <article v-else-if="data">
-      <Narrative :narrative="data.narrative" />
+      <Narrative :narrative="data.narrative" :tokens="data.tokens" :prices="data.prices" />
 
-      <header class="summary">
-        <code class="hash">{{ data.hash }}</code>
-        <div class="meta">
-          <span :data-status="data.status">{{ data.status }}</span>
-          <ProvenanceChip :provenance="data.provenance" />
-        </div>
-        <p v-if="data.revertReason" class="revert">Reverted: {{ data.revertReason }}</p>
-      </header>
-
-      <dl class="facts">
-        <dt>From</dt>
-        <dd><code>{{ truncateAddress(data.from) }}</code></dd>
-        <dt>To</dt>
-        <dd><code>{{ data.to ? truncateAddress(data.to) : 'contract creation' }}</code></dd>
-        <dt>Value</dt>
-        <dd>{{ eth(data.value) }}</dd>
-        <dt>Fee</dt>
-        <dd>{{ eth(data.feeWei) }}</dd>
-        <dt>Gas used</dt>
-        <dd>{{ data.gasUsed }}</dd>
-      </dl>
-
-      <h2>Value flow</h2>
-      <FlowSankey :flow="data.flow" :tokens="data.tokens" :sender="data.from" />
-
-      <h2>Call</h2>
-      <CallRow :call="data.call" />
-
-      <h2>Internal calls</h2>
-      <p v-if="data.coverage.calls === 'truncated'" class="partial" role="status">
-        More internal calls than the source returns in one read. Showing the first
-        {{ data.activity.kind === 'flat' ? data.activity.calls.length : 0 }}.
+      <p class="summary">
+        <span class="status" :data-status="data.status">
+          {{ data.status === 'success' ? 'Succeeded' : 'Failed' }}
+        </span>
+        <span>{{ when }}</span>
+        <span>Network fee {{ fee }}</span>
       </p>
-      <p v-else-if="data.coverage.calls === 'unavailable'" class="partial" role="status">
-        The internal-call data could not be fetched. This is a failed request, not an
-        empty result — the transaction may well have internal calls.
-      </p>
-      <CallActivity :activity="data.activity" />
 
-      <h2>Events <span class="count">{{ data.logs.length }}</span></h2>
-      <p v-if="data.coverage.logs === 'truncated'" class="partial" role="status">
-        This transaction has more events than the source will return in one read.
-        Showing the first {{ data.logs.length }}.
-      </p>
-      <p v-else-if="data.coverage.logs === 'unavailable'" class="partial" role="status">
-        Event data could not be fetched.
-      </p>
-      <ul class="logs">
-        <li v-for="log in data.logs" :key="log.logIndex">
-          <span class="event">{{ log.eventName ?? 'unknown event' }}</span>
-          <span class="from">{{ log.contractName ?? truncateAddress(log.address) }}</span>
-          <span v-if="log.confidence === 'raw'" class="flag">could not decode</span>
-          <dl v-else class="args">
-            <template v-for="arg in log.args" :key="arg.name">
-              <dt>{{ arg.name }}</dt>
-              <dd><ArgValue :type="arg.type" :value="arg.value" /></dd>
-            </template>
-          </dl>
-        </li>
-      </ul>
+      <section aria-labelledby="steps-title">
+        <h2 id="steps-title">Step by step</h2>
+        <p
+          v-if="data.coverage.logs !== 'complete' || data.coverage.calls !== 'complete'"
+          class="partial"
+          role="status"
+        >
+          Some of this transaction’s data couldn’t be read, so these steps may be incomplete.
+        </p>
+        <StepList v-if="steps.length" :steps="steps" :people="people" />
+        <p v-else-if="data.status !== 'success'" class="empty">
+          Nothing moved: the transaction failed, so every change it tried to make was undone.
+        </p>
+        <p v-else class="empty">
+          No money or tokens moved. This transaction only changed a setting or a record inside a
+          contract.
+        </p>
+      </section>
+
+      <section v-if="involved.length" aria-labelledby="people-title">
+        <h2 id="people-title">Who’s involved</h2>
+        <PartyList :people="involved" :explorer-base="chain?.explorerBase ?? 'https://etherscan.io'" />
+        <p class="txid">
+          Transaction ID <code :title="data.hash">{{ truncateAddress(data.hash, 10, 8) }}</code>
+          <a
+            class="icon"
+            :href="`${chain?.explorerBase ?? 'https://etherscan.io'}/tx/${data.hash}`"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View this transaction on Etherscan (opens in a new tab)"
+          >
+            <Icon name="external" />
+          </a>
+        </p>
+      </section>
+
+      <TechnicalDetails :data="data" :people="people" />
+
+      <section class="another" aria-labelledby="another-title">
+        <h2 id="another-title">Explain another transaction</h2>
+        <HashForm />
+      </section>
     </article>
   </div>
 </template>
 
 <style scoped>
 .summary {
-  border-bottom: 1px solid var(--line);
-  padding-bottom: 1rem;
-  margin-bottom: 1.5rem;
-}
-.hash {
-  font-size: 0.8rem;
-  color: var(--text-dim);
-  overflow-wrap: anywhere;
-}
-.meta {
   display: flex;
-  gap: 1rem;
-  align-items: center;
-  margin-top: 0.75rem;
   flex-wrap: wrap;
+  gap: 0.4rem 1.5rem;
+  margin: 1.75rem 0 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.875rem;
+  color: var(--text-dim);
 }
-[data-status='success'] {
+.status {
+  font-weight: 500;
+}
+.status[data-status='success'] {
   color: var(--ok);
 }
-[data-status='reverted'] {
+.status[data-status='reverted'] {
   color: var(--bad);
 }
-.revert {
-  color: var(--bad);
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-}
-.facts {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.35rem 2rem;
-  margin: 0 0 2.5rem;
-}
-dt {
-  color: var(--text-dim);
-  font-size: 0.85rem;
-}
-dd {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
+section {
+  margin-top: 3rem;
 }
 h2 {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin: 2.5rem 0 0.75rem;
-}
-.count {
-  color: var(--text-faint);
-}
-.logs {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 1px;
-  background: var(--line);
-}
-.logs li {
-  background: var(--bg);
-  padding: 0.6rem 0.75rem;
-  font-size: 0.8rem;
-}
-.event {
-  font-family: var(--font-mono);
-  color: var(--accent);
-  margin-right: 1ch;
-}
-.from {
-  color: var(--text-dim);
-}
-.flag {
-  color: var(--warn);
-  margin-left: 1ch;
-}
-.args {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.15rem 1.5rem;
-  margin: 0.4rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 560;
+  color: var(--text);
+  margin: 0 0 0.9rem;
 }
 .partial {
   color: var(--warn);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   margin: 0 0 0.75rem;
   max-width: 62ch;
 }
+.empty {
+  color: var(--text-dim);
+  max-width: 62ch;
+  margin: 0;
+}
+.txid {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.txid code {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+}
+article > :deep(.technical) {
+  margin-top: 3.5rem;
+}
+.another {
+  margin-top: 3.5rem;
+}
+
+.loading {
+  display: grid;
+  gap: 0.9rem;
+  max-width: 34rem;
+}
+.skeleton {
+  border-radius: 6px;
+  background: var(--bg-raised);
+  animation: breathe 1.6s ease-in-out infinite;
+}
+.headline {
+  height: 2.6rem;
+  width: 92%;
+}
+.line {
+  height: 0.9rem;
+  width: 70%;
+}
+.line.short {
+  width: 45%;
+}
+.stage {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  max-width: 52ch;
+}
+@keyframes breathe {
+  50% {
+    opacity: 0.45;
+  }
+}
+
 .failed h1 {
-  font-size: 1.1rem;
+  font-size: 1.4rem;
+  font-weight: 560;
+  margin: 0 0 0.6rem;
+}
+.failed p {
+  color: var(--text-dim);
+  max-width: 58ch;
+  margin: 0 0 2rem;
 }
 </style>

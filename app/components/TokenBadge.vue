@@ -1,12 +1,21 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
-withDefaults(defineProps<{ symbol: string; iconUrl?: string | null; size?: number }>(), {
-  iconUrl: null,
-  size: 14,
-})
+const props = withDefaults(
+  defineProps<{ symbol: string; iconUrl?: string | null; size?: number }>(),
+  {
+    iconUrl: null,
+    size: 14,
+  },
+)
 
 const failed = ref(false)
+/**
+ * No logo: a lettered disc — but only when the symbol starts with a letter. A
+ * digit in a disc ("0" for a token called "01") reads as part of the amount,
+ * which is exactly the confusion the chip exists to prevent.
+ */
+const letter = computed(() => (/^[a-z]/i.test(props.symbol) ? props.symbol[0] : null))
 </script>
 
 <template>
@@ -28,13 +37,13 @@ const failed = ref(false)
       referrerpolicy="no-referrer"
       @error="failed = true"
     >
-    <!-- No logo: a lettered disc, so every token gets a visual anchor. -->
     <span
-      v-else
+      v-else-if="letter"
       class="fallback"
       aria-hidden="true"
       :style="{ width: `${size}px`, height: `${size}px`, fontSize: `${size * 0.55}px` }"
-    >{{ symbol.slice(0, 1) }}</span>
+    >{{ letter }}</span>
+    <Icon v-else class="generic" name="coin" :size="size" />
     <span class="symbol">{{ symbol }}</span>
   </span>
 </template>
@@ -58,8 +67,14 @@ img {
   border-radius: 50%;
   background: var(--line);
   color: var(--text-dim);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
+  font-weight: 600;
   line-height: 1;
+  text-transform: uppercase;
+}
+.generic {
+  flex: none;
+  color: var(--text-dim);
 }
 .symbol {
   font-family: var(--font-mono);

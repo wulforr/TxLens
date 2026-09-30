@@ -10,6 +10,20 @@ export default defineNuxtConfig({
     // Development: plain files under .data/txlens (gitignored), inside the repo.
     devStorage: { txlens: { driver: 'fs', base: './.data/txlens' } },
   },
-  css: ['~/assets/base.css'],
+  // Self-hosted: no third-party font request, and the type actually renders
+  // instead of silently falling back to whatever the visitor has installed.
+  css: ['@fontsource-variable/inter', '@fontsource-variable/jetbrains-mono', '~/assets/base.css'],
+  app: {
+    head: {
+      htmlAttrs: { lang: 'en' },
+      title: 'TxLens',
+      meta: [
+        {
+          name: 'description',
+          content: 'Paste an Ethereum transaction ID and get it explained in plain words.',
+        },
+      ],
+    },
+  },
   devtools: { enabled: true },
 })

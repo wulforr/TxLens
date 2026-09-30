@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { TokenMeta } from '~~/server/tokens/metadata'
 import { formatLogArg } from '~~/shared/format'
-import { groupEvents, labelParticipants, toSteps, usdText } from '~~/shared/steps'
+import { groupEvents, labelParticipants, partUsd, toSteps, usdText } from '~~/shared/steps'
 import type { WireFlowEdge } from '~~/shared/wire'
 
 const SENDER = '0x1d4de31b7f1fefcacf4f59152b852a6a013fdd60'
@@ -107,6 +107,17 @@ describe('toSteps', () => {
     )
     expect(steps[0]?.usd).toBeCloseTo(934.84, 2)
     expect(steps[1]?.usd).toBeNull()
+  })
+
+  it('carries the intermediaries a transfer passed through', () => {
+    const steps = toSteps([{ ...edge(SENDER, EOA, '5', 0, true), via: [HOP] }], tokens, {}, 'ETH')
+    expect(steps[0]?.via).toEqual([HOP])
+  })
+
+  it('prices an amount part for the headline', () => {
+    const [step] = toSteps([edge(SENDER, ROUTER, '935118160', 0)], tokens, {}, 'ETH')
+    expect(partUsd(step!.amount, tokens, { [`erc20:${USDT}`]: 1 })).toBeCloseTo(935.11816, 4)
+    expect(partUsd(step!.amount, tokens, {})).toBeNull()
   })
 
   it('skips zero-amount edges, which moved nothing', () => {

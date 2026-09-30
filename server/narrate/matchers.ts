@@ -44,7 +44,9 @@ export const failed: Matcher = (ctx) => {
         ctx.tx.revertReason ? `Reverted: ${ctx.tx.revertReason}` : 'Reverted, with no reason given',
       ),
     ],
-    details: ['Gas was still spent. No state change survived.'],
+    details: [
+      'Nothing changed except the network fee, which is paid even when a transaction fails.',
+    ],
   }
 }
 
@@ -62,7 +64,7 @@ export const approval: Matcher = (ctx) => {
   const token = first.contractName ?? truncateAddress(first.address)
 
   return {
-    parts: [text(`Approved ${spender ? truncateAddress(spender) : 'a spender'} to move ${token}`)],
+    parts: [text(`Approved ${spender ? nameOf(ctx, spender) : 'a spender'} to move ${token}`)],
     details: approvals.length > 1 ? [`${approvals.length} approvals in this transaction.`] : [],
   }
 }
@@ -150,7 +152,7 @@ export const transfer: Matcher = (ctx) => {
     parts: [
       text('Sent '),
       amountPart(paid.amount, paid.asset, ctx.tokens),
-      text(` to ${truncateAddress(recipients[0][0])}`),
+      text(` to ${nameOf(ctx, recipients[0][0])}`),
     ],
     details: [],
   }
