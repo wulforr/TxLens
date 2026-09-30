@@ -326,6 +326,59 @@ describe('narrate', () => {
     expect(plain.details.join(' ')).not.toContain('hack')
   })
 
+  it('tells a multisig payment from the wallet that paid, not as a stranger’s loss', () => {
+    // The signer calls their Safe (tx.to), and the Safe pays. The signer's own
+    // balance never moves.
+    const result = narrate(
+      ctx([edge(ROUTER, MAKER, 172500000n, usdtAsset)], {
+        names: { [ROUTER]: { name: 'Gnosis Safe Proxy', isContract: true } },
+      }),
+    )
+    expect(result.headline).toBe('Gnosis Safe Proxy sent 172.5 USDT to 0x333333…333333')
+    expect(result.details.join(' ')).toContain('money moved out of the contract it called')
+  })
+
+  it('tells an ERC-4337 operation from the user’s account, not the bundler', () => {
+    const ENTRY = '0x0000000071727de22e5e9d8baf0edac6f37da032'
+    const ACCOUNT = '0x7777777777777777777777777777777777777777'
+    const opLog = {
+      address: ENTRY,
+      topics: [
+        '0x49628fd1471006c1482da88028e9ce4dbb080b815c9b0344d39e5a8e6ec1419f',
+        `0x${'0'.repeat(24)}${ACCOUNT.slice(2)}`,
+      ],
+      data: '0x',
+      logIndex: 0,
+    }
+    const result = narrate(
+      ctx([edge(ACCOUNT, MAKER, 5000000n, usdtAsset)], {
+        tx: tx({ to: ENTRY, logs: [opLog] as never }),
+      }),
+    )
+    expect(result.headline).toBe('The account sent 5 USDT to 0x333333…333333')
+    expect(result.details.join(' ')).toContain('bundler')
+  })
+
+  it('treats a tiny refund as a footnote, not a reason to give up on “swapped”', () => {
+    const result = narrate(
+      ctx(
+        [
+          edge(ALICE, ROUTER, 2505540000n, usdtAsset),
+          edge(MAKER, ALICE, 133251n * 10n ** 18n, coinAsset),
+          edge(ROUTER, ALICE, 472000000000000n),
+        ],
+        {
+          prices: new Map([
+            [`erc20:${USDT}`, 1],
+            ['native', 2700],
+          ]),
+        },
+      ),
+    )
+    expect(result.matcher).toBe('swap')
+    expect(result.details).toContain('Also got back 0.000472 ETH.')
+  })
+
   it('says so plainly when no value moved', () => {
     const result = narrate(ctx([]))
     expect(result.headline).toBe('No value moved')

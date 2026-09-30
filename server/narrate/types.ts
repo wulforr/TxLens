@@ -18,6 +18,12 @@ export interface NarrativeContext {
   names?: Record<string, AddressInfo>
   /** assetKey -> USD per whole unit, when known. Used to rank winners and losers. */
   prices?: Map<string, number>
+  /**
+   * How `sender` relates to the account that signed: set when the story is told
+   * from an account acting for the signer (a multisig wallet it called, or an
+   * ERC-4337 account whose operation a bundler submitted).
+   */
+  acting?: 'called' | 'userOperation'
 }
 
 export interface Narrative {

@@ -69,6 +69,8 @@ export function formatUnits(amount: bigint, decimals: number): string {
   const digits = Math.min(decimals, absolute / base >= 1000n ? 2 : 6)
   const scale = 10n ** BigInt(digits)
   const rounded = (absolute * scale + base / 2n) / base
+  // Rounding a real amount to "0" says nothing moved. Say how small it was instead.
+  if (rounded === 0n && absolute > 0n) return `< 0.${'0'.repeat(digits - 1)}1`
   const whole = (rounded / scale).toLocaleString('en-US')
   const fraction =
     digits > 0 ? (rounded % scale).toString().padStart(digits, '0').replace(/0+$/, '') : ''

@@ -29,6 +29,12 @@ const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slic
  * public labels; a contract wallet's "name" is its code's identifier ("Vb").
  */
 function subject(ctx: NarrativeContext): string {
+  // Telling it from an acting account: that account is the subject, by name or role.
+  if (ctx.acting === 'called') return capitalise(nameOf(ctx, ctx.sender))
+  if (ctx.acting === 'userOperation') {
+    const name = ctx.names?.[ctx.sender.toLowerCase()]?.name
+    return name ? humanize(name) : 'The account'
+  }
   const info = ctx.names?.[ctx.sender.toLowerCase()]
   return info?.name && info.isContract === false ? humanize(info.name) : 'The sender'
 }
@@ -119,13 +125,53 @@ export const burn: Matcher = (ctx) => {
   }
 }
 
-export const swap: Matcher = (ctx) => {
-  const { spent, gained } = senderMoves(ctx)
-  if (spent.length !== 1 || gained.length !== 1) return null
+/** USD value of an amount, when both its price and its decimals are known. */
+function usdOf(ctx: NarrativeContext, asset: AssetRef, amount: bigint): number | null {
+  const key = assetKey(asset)
+  const price = ctx.prices?.get(key)
+  const decimals =
+    asset.kind === 'native' ? 18 : asset.kind === 'erc20' ? ctx.tokens.get(key)?.decimals : null
+  if (price === undefined || typeof decimals !== 'number') return null
+  return (Number(amount) / 10 ** decimals) * price
+}
 
-  const paid = spent[0]
-  const got = gained[0]
+/**
+ * Split off moves too small to be the point: a few cents of ETH refunded
+ * after a swap should not turn "swapped USDT for AZTEC" into a list. Only
+ * priced moves under 1% of the largest priced move qualify; unpriced ones
+ * always count, since we can't tell they're small.
+ */
+function withoutDust(
+  ctx: NarrativeContext,
+  items: { asset: AssetRef; amount: bigint }[],
+  max: number,
+) {
+  const main: typeof items = []
+  const dust: typeof items = []
+  for (const item of items) {
+    const usd = usdOf(ctx, item.asset, item.amount)
+    ;(usd !== null && usd < max * 0.01 ? dust : main).push(item)
+  }
+  return { main, dust }
+}
+
+export const swap: Matcher = (ctx) => {
+  const moves = senderMoves(ctx)
+  const max = Math.max(
+    0,
+    ...[...moves.spent, ...moves.gained].map((m) => usdOf(ctx, m.asset, m.amount) ?? 0),
+  )
+  const spent = withoutDust(ctx, moves.spent, max)
+  const gained = withoutDust(ctx, moves.gained, max)
+  if (spent.main.length !== 1 || gained.main.length !== 1) return null
+
+  const paid = spent.main[0]
+  const got = gained.main[0]
   const details: string[] = []
+  for (const item of gained.dust)
+    details.push(`Also got back ${formatAmount(item.amount, item.asset, ctx.tokens)}.`)
+  for (const item of spent.dust)
+    details.push(`Also paid ${formatAmount(item.amount, item.asset, ctx.tokens)}.`)
 
   // A router that keeps a slice shows up as an address whose only net is a
   // positive balance of the asset the sender paid in.

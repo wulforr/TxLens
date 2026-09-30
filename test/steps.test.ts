@@ -214,6 +214,9 @@ describe('formatUnits at scale', () => {
     [1280655300000000000000000000n, 18, '1.28 billion'],
     [8877507348306000000000000n, 18, '8,877,507.35'],
     [1189321n, 8, '0.011893'],
+    // A real amount never rounds to "0".
+    [1n, 18, '< 0.000001'],
+    [0n, 18, '0'],
   ])('%s with %s decimals -> %s', (amount, decimals, expected) => {
     expect(formatUnits(amount, decimals)).toBe(expected)
   })
