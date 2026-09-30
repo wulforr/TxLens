@@ -64,6 +64,19 @@ describe('labelParticipants', () => {
     expect(people[EOA]?.label).toBe('Wallet A')
   })
 
+  it('calls an unnamed contract the sender called by its role', () => {
+    const called = labelParticipants([SENDER, HOP, MAKER], SENDER, names, tokens, HOP)
+    expect(called[HOP]?.label).toBe('Called contract')
+    expect(called[MAKER]?.label).toBe('Contract A')
+  })
+
+  it('gives neighbouring participants different colours, never the sender', () => {
+    expect(people[SENDER]?.tone).toBeUndefined()
+    expect(people[ZERO]?.tone).toBeUndefined()
+    const tones = [ROUTER, HOP, MAKER, EOA].map((a) => people[a]?.tone)
+    expect(tones).toEqual([0, 1, 2, 3])
+  })
+
   it('names the zero address for what it means', () => {
     expect(people[ZERO]).toMatchObject({ role: 'zero' })
   })

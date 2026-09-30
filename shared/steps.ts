@@ -13,7 +13,16 @@ export interface Participant {
   role: Role
   /** From the data source: a program (true), an ordinary account (false), or unknown. */
   isContract?: boolean | null
+  /** Position in PARTY_HUES, by first appearance; absent for the sender and the zero address. */
+  tone?: number
 }
+
+/**
+ * Dot colours, handed out in order of appearance so neighbours never match.
+ * No reds or greens (they read as failed/succeeded) and nothing near the
+ * sender's violet accent.
+ */
+export const PARTY_HUES = [205, 40, 320, 185, 290, 60, 30, 235] as const
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
@@ -30,12 +39,15 @@ export function labelParticipants(
   sender: string,
   names: Record<string, AddressInfo>,
   tokens: Record<string, TokenMeta>,
+  /** The contract the sender called. When it has no name, its role is the best label we have. */
+  called?: string | null,
 ): Record<string, Participant> {
   const tokenSymbols = new Map(
     Object.values(tokens).map((t) => [t.address.toLowerCase(), t.symbol]),
   )
   const counters: Record<string, number> = {}
   const out: Record<string, Participant> = {}
+  let tone = 0
 
   for (const raw of addresses) {
     const address = raw.toLowerCase()
@@ -52,6 +64,8 @@ export function labelParticipants(
         role: 'named',
         isContract,
       }
+    } else if (called && address === called.toLowerCase() && names[address]?.isContract !== false) {
+      out[address] = { address, label: 'Called contract', role: 'contract', isContract: true }
     } else if (tokenSymbols.get(address)) {
       out[address] = {
         address,
@@ -71,6 +85,7 @@ export function labelParticipants(
         isContract,
       }
     }
+    if (out[address].role !== 'sender' && out[address].role !== 'zero') out[address].tone = tone++
   }
   return out
 }

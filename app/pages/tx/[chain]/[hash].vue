@@ -50,7 +50,7 @@ const people = computed(() => {
       ? d.activity.calls.flatMap((c) => [c.from, c.to ?? d.from])
       : []),
   ]
-  return labelParticipants(order, d.from, d.names, d.tokens)
+  return labelParticipants(order, d.from, d.names, d.tokens, d.to)
 })
 
 const steps = computed(() =>
