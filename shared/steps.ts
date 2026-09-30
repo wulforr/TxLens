@@ -20,9 +20,9 @@ export interface Participant {
 /**
  * Dot colours, handed out in order of appearance so neighbours never match.
  * No reds or greens (they read as failed/succeeded) and nothing near the
- * sender's violet accent.
+ * sender's brass accent.
  */
-export const PARTY_HUES = [205, 40, 320, 185, 290, 60, 30, 235] as const
+export const PARTY_HUES = [200, 300, 175, 255, 330, 225, 275, 190] as const
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 

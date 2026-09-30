@@ -1,20 +1,22 @@
 /*
- * Instrument panel: dark slate, tabular numerals, mono for hashes and data.
- * Deliberately unrelated to the sibling projects in this folder — see the
- * root README's "Visual identity" section.
+ * Instrument panel: deep petrol slate with a brass dial colour — warmer than a
+ * code editor, because the reader is anyone, not only developers. Tabular
+ * numerals, mono for hashes and data. Deliberately unrelated to the sibling
+ * projects in this folder — see the root README's "Visual identity" section.
+ * Contrast on --bg: text 15.6, dim 8.5, faint 6.2, accent 9.9, bad 6.2 (all AA).
  */
 :root {
-  --bg: #0d1117;
-  --bg-raised: #161b22;
-  --line: #232b36;
-  --text: #e6edf3;
-  --text-dim: #9aa7b4;
-  /* 5.5:1 on --bg, 5.0:1 on --bg-raised. The old #5f6b78 was 3.5:1 and failed AA. */
-  --text-faint: #808b97;
-  --accent: #a78bfa;
-  --ok: #3fb950;
-  --warn: #d29922;
-  --bad: #f85149;
+  --bg: #0c1517;
+  --bg-raised: #132124;
+  --line: #223639;
+  --text: #e3eeec;
+  --text-dim: #9fb4b2;
+  --text-faint: #83999a;
+  --accent: #e8b64c;
+  --on-accent: #1a1407;
+  --ok: #5fcf98;
+  --warn: #f0925a;
+  --bad: #f26b60;
   --font-ui: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
   color-scheme: dark;
@@ -73,7 +75,7 @@ button:hover {
 button.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #16121f;
+  color: var(--on-accent);
   font-weight: 560;
   padding: 0.65rem 1.25rem;
 }
