@@ -6,11 +6,19 @@ import { buildFlow } from '~~/server/flow/build'
 import { netPositions } from '~~/server/flow/positions'
 import { reduceFlow } from '~~/server/flow/reduce'
 import { narrate } from '~~/server/narrate/registry'
+import { fetchUsdPrices } from '~~/server/prices/usd'
 import { fetchTransaction } from '~~/server/sources/registry'
 import { createTokenResolver } from '~~/server/tokens/metadata'
 import { createHttpClient } from '~~/server/utils/http'
+import { bestEffortStore } from '~~/server/utils/store'
 import { parseTxRef } from '~~/server/utils/txref'
 import { toWire } from '~~/shared/wire'
+
+/**
+ * Bump whenever the payload shape or the decoding changes: old cached payloads
+ * are then simply never read again, with no manual flush.
+ */
+const CACHE_VERSION = 2
 
 export default defineEventHandler(async (event) => {
   const parsed = parseTxRef(getRouterParam(event, 'chain'), getRouterParam(event, 'hash'))
@@ -20,6 +28,12 @@ export default defineEventHandler(async (event) => {
 
   const { chain, hash } = parsed.ref
   const http = createHttpClient()
+  const store = bestEffortStore(useStorage('txlens'))
+
+  // A final transaction never changes, so its decoded result is valid forever.
+  const cacheKey = `tx:v${CACHE_VERSION}:${chain.id}:${hash}`
+  const cached = await store.getItem(cacheKey)
+  if (cached) return cached as ReturnType<typeof toWire>
 
   const tx = await fetchTransaction(http, chain, hash)
   if (!tx) {
@@ -61,7 +75,29 @@ export default defineEventHandler(async (event) => {
     positions: netPositions(edges),
     tokens,
     sender: tx.from,
+    names: tx.names,
   })
 
-  return toWire(tx, call, logs, { narrative, flow: edges, tokens })
+  // Native is always priced: the network fee is paid in it.
+  const { prices, complete: pricesComplete } = await fetchUsdPrices(
+    http,
+    store,
+    chain,
+    [{ kind: 'native' }, ...edges.map((edge) => edge.asset)],
+    tx.timestamp,
+  )
+
+  const payload = toWire(tx, call, logs, { narrative, flow: edges, tokens, prices })
+
+  // Freeze it only if nothing about it could change or improve: past the reorg
+  // depth, every page read, and the price lookup succeeded. Caching a transient
+  // failure would make it permanent.
+  const final =
+    tx.confirmations >= chain.reorgDepth &&
+    tx.coverage.logs === 'complete' &&
+    tx.coverage.calls === 'complete' &&
+    pricesComplete
+  if (final) await store.setItem(cacheKey, payload)
+
+  return payload
 })

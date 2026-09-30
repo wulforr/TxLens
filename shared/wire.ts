@@ -6,7 +6,7 @@ import { assetKey } from '~~/server/flow/assets'
 import type { FlowEdge, FlowOrigin } from '~~/server/flow/build'
 import type { Narrative } from '~~/server/narrate/types'
 import type { TokenMeta } from '~~/server/tokens/metadata'
-import type { CallKind, Coverage, RawTransaction, TraceProvenance } from './types'
+import type { AddressInfo, CallKind, Coverage, RawTransaction, TraceProvenance } from './types'
 
 export interface WireFlatCall {
   kind: CallKind
@@ -25,6 +25,7 @@ export interface WireFlowEdge {
   assetKey: string
   amount: string
   origin: FlowOrigin
+  order: number
   gross?: string
   via?: Address[]
   isDust?: boolean
@@ -35,6 +36,10 @@ export interface TxPayload {
   flow: WireFlowEdge[]
   /** assetKey -> token metadata, so the client can format amounts. */
   tokens: Record<string, TokenMeta>
+  /** assetKey -> USD per whole unit on the transaction's day. Absent means unknown. */
+  prices: Record<string, number>
+  /** lowercased address -> what the source knows about it */
+  names: Record<string, AddressInfo>
   chainId: number
   hash: Hex
   blockNumber: string
@@ -59,7 +64,12 @@ export function toWire(
   tx: RawTransaction,
   call: DecodedCall,
   logs: DecodedLog[],
-  extra: { narrative: Narrative; flow: FlowEdge[]; tokens: Map<string, TokenMeta> },
+  extra: {
+    narrative: Narrative
+    flow: FlowEdge[]
+    tokens: Map<string, TokenMeta>
+    prices?: Map<string, number>
+  },
 ): TxPayload {
   const activity: WireActivity =
     tx.activity.kind === 'flat'
@@ -84,11 +94,14 @@ export function toWire(
       assetKey: assetKey(edge.asset),
       amount: edge.amount.toString(),
       origin: edge.origin,
+      order: edge.order,
       ...(edge.gross === undefined ? {} : { gross: edge.gross.toString() }),
       ...(edge.via === undefined ? {} : { via: edge.via }),
       ...(edge.isDust === undefined ? {} : { isDust: edge.isDust }),
     })),
     tokens: Object.fromEntries(extra.tokens),
+    prices: Object.fromEntries(extra.prices ?? []),
+    names: tx.names,
     chainId: tx.chainId,
     hash: tx.hash,
     blockNumber: tx.blockNumber.toString(),

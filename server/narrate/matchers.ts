@@ -2,7 +2,20 @@ import type { AssetRef } from '~~/server/flow/assets'
 import { assetKey, isZeroAddress } from '~~/server/flow/assets'
 import { truncateAddress } from '~~/shared/address'
 import { amountPart, formatAmount, text } from '~~/shared/format'
+import { humanize } from '~~/shared/names'
 import type { Matcher, NarrativeContext } from './types'
+
+/** A known name in words, or the shortened address. */
+function nameOf(ctx: NarrativeContext, address: string): string {
+  const name = ctx.names?.[address.toLowerCase()]?.name
+  return name ? humanize(name) : truncateAddress(address)
+}
+
+/** "A", "A and B", "A, B and C". */
+function listOf(items: string[]): string {
+  if (items.length <= 1) return items.join('')
+  return `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`
+}
 
 /** Assets the sender lost and gained, ignoring zero nets. */
 function senderMoves(ctx: NarrativeContext) {
@@ -89,13 +102,28 @@ export const swap: Matcher = (ctx) => {
     const onlyAsset = [...assets.values()].filter((v) => v !== 0n).length === 1
     if (net > 0n && onlyAsset && net < paid.amount / 10n) {
       details.push(
-        `${truncateAddress(address)} kept ${formatAmount(net, paid.asset, ctx.tokens)} as a fee.`,
+        `${nameOf(ctx, address)} kept ${formatAmount(net, paid.asset, ctx.tokens)} as a service fee.`,
       )
     }
   }
 
-  const venues = [...new Set(ctx.logs.map((log) => log.contractName).filter(Boolean))]
-  if (venues.length > 0) details.push(`Touched ${venues.slice(0, 4).join(', ')}.`)
+  // The services the swap went through: contracts that emitted events, minus the
+  // token contracts themselves (already named in the headline) and anything we
+  // can't put a name to (a hex list tells a newcomer nothing).
+  const tokenContracts = new Set(
+    ctx.edges.flatMap((edge) =>
+      edge.asset.kind === 'native' ? [] : [edge.asset.address.toLowerCase()],
+    ),
+  )
+  const venues = [
+    ...new Set(
+      ctx.logs
+        .map((log) => log.address.toLowerCase())
+        .filter((address) => !tokenContracts.has(address) && ctx.names?.[address]?.name)
+        .map((address) => nameOf(ctx, address)),
+    ),
+  ]
+  if (venues.length > 0) details.push(`Went through ${listOf(venues.slice(0, 3))}.`)
 
   return {
     parts: [

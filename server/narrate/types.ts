@@ -4,7 +4,7 @@ import type { FlowEdge } from '~~/server/flow/build'
 import type { Positions } from '~~/server/flow/positions'
 import type { TokenMeta } from '~~/server/tokens/metadata'
 import type { NarrativePart } from '~~/shared/format'
-import type { RawTransaction } from '~~/shared/types'
+import type { AddressInfo, RawTransaction } from '~~/shared/types'
 
 export interface NarrativeContext {
   tx: RawTransaction
@@ -14,6 +14,8 @@ export interface NarrativeContext {
   /** assetKey -> metadata. Missing means decimals are unknown. */
   tokens: Map<string, TokenMeta>
   sender: Address
+  /** Human names for addresses, when the source knew them. */
+  names?: Record<string, AddressInfo>
 }
 
 export interface Narrative {

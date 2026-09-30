@@ -138,6 +138,44 @@ describe('narrate', () => {
     expect(result.details.join(' ')).toContain('fee')
   })
 
+  it('names the service taking the fee and the services the swap went through', () => {
+    const POOL = '0x000000000004444c5dc75cb358380d2e3de08a90'
+    const log = (address: string) =>
+      ({
+        confidence: 'decoded',
+        address,
+        contractName: null,
+        eventName: 'Swap',
+        signature: null,
+        topic0: '0x00',
+        logIndex: 0,
+        args: [],
+      }) as unknown as DecodedLog
+    const result = narrate(
+      ctx(
+        [
+          edge(ALICE, ROUTER, 935118160n, usdtAsset),
+          edge(ROUTER, MAKER, 932312806n, usdtAsset),
+          edge(MAKER, ALICE, 2336944687482834621909n, coinAsset),
+        ],
+        {
+          logs: [log(USDT), log(MAKER), log(POOL)],
+          names: {
+            [ROUTER]: { name: 'TransitSwapRouterV5.1', isContract: true },
+            [MAKER]: { name: 'NativeRFQPool', isContract: true },
+            [POOL]: { name: 'Uniswap V4: Pool Manager', isContract: true },
+            [USDT]: { name: 'USDT Stablecoin', isContract: true },
+          },
+        },
+      ),
+    )
+    expect(result.details).toContain(
+      'Transit Swap Router V5.1 kept 2.805354 USDT as a service fee.',
+    )
+    // The token contracts are already in the headline; listing them again is noise.
+    expect(result.details).toContain('Went through Native RFQ Pool and Uniswap V4: Pool Manager.')
+  })
+
   it('describes a plain transfer', () => {
     const result = narrate(ctx([edge(ALICE, MAKER, 5000000n, usdtAsset)]))
     expect(result.matcher).toBe('transfer')
