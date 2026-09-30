@@ -97,15 +97,15 @@ describe('fetchFromBlockscout', () => {
     const http = fakeHttp(routes())
     const tx = (await fetchFromBlockscout(http, chain, hash))!
     // ENS wins, then a name-type tag, then the contract name.
-    expect(tx.names['0x1111111111111111111111111111111111111111']).toEqual({
+    expect(tx.names['0x1111111111111111111111111111111111111111']).toMatchObject({
       name: 'alice.eth',
       isContract: false,
     })
-    expect(tx.names['0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48']).toEqual({
+    expect(tx.names['0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48']).toMatchObject({
       name: 'USDC Stablecoin',
       isContract: true,
     })
-    expect(tx.names['0x3333333333333333333333333333333333333333']).toEqual({
+    expect(tx.names['0x3333333333333333333333333333333333333333']).toMatchObject({
       name: 'PoolManager',
       isContract: true,
     })
@@ -185,8 +185,8 @@ describe('fetchAddressNames', () => {
       [url(EOA)]: { hash: EOA, is_contract: false },
     })
     const names = await fetchAddressNames(http, chain, [FUND, EOA])
-    expect(names[FUND]).toEqual({ name: 'India Covid-Crypto Relief Fund', isContract: true })
-    expect(names[EOA]).toEqual({ name: null, isContract: false })
+    expect(names[FUND]).toMatchObject({ name: 'India Covid-Crypto Relief Fund', isContract: true })
+    expect(names[EOA]).toMatchObject({ name: null, isContract: false })
   })
 
   it('makes one metadata call however many addresses, caps the rest, and survives failures', async () => {

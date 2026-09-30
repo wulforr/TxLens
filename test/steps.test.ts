@@ -77,6 +77,24 @@ describe('labelParticipants', () => {
     expect(tones).toEqual([0, 1, 2, 3])
   })
 
+  it('carries the kind and hack flag from the source, and the sender’s public name', () => {
+    const tagged = labelParticipants(
+      [SENDER, ROUTER],
+      SENDER,
+      {
+        [SENDER]: { name: 'Euler Finance Exploiter 3', isContract: false, flagged: true },
+        [ROUTER]: { name: 'TransitSwapRouterV5.1', isContract: true, kind: 'exchange' },
+      },
+      tokens,
+    )
+    expect(tagged[SENDER]).toMatchObject({
+      label: 'Sender',
+      knownAs: 'Euler Finance Exploiter 3',
+      flagged: true,
+    })
+    expect(tagged[ROUTER]?.kind).toBe('exchange')
+  })
+
   it('names the zero address for what it means', () => {
     expect(people[ZERO]).toMatchObject({ role: 'zero' })
   })

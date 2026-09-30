@@ -2,6 +2,7 @@ import type { Hex } from 'viem'
 import { type HttpClient, withTimeout } from '~~/server/utils/http'
 import { normaliseAddress } from '~~/shared/address'
 import type { ChainConfig } from '~~/shared/chains'
+import { classifyTags } from '~~/shared/names'
 import type {
   AddressInfo,
   CallActivity,
@@ -18,7 +19,9 @@ interface BlockscoutAddress {
   name?: string | null
   ens_domain_name?: string | null
   is_contract?: boolean | null
-  metadata?: { tags?: { name?: string | null; tagType?: string | null }[] | null } | null
+  metadata?: {
+    tags?: { name?: string | null; tagType?: string | null; slug?: string | null }[] | null
+  } | null
 }
 
 /**
@@ -42,9 +45,12 @@ function harvest(
   const tag = address.metadata?.tags?.find((t) => t.tagType === 'name' && t.name)?.name
   const name = address.ens_domain_name || tag || address.name || null
   const previous = names[key]
+  const { kind, flagged } = classifyTags(address.metadata?.tags)
   names[key] = {
     name: previous?.name ?? name,
     isContract: address.is_contract ?? previous?.isContract ?? null,
+    kind: previous?.kind ?? kind,
+    flagged: Boolean(previous?.flagged) || flagged,
   }
 }
 
@@ -278,7 +284,7 @@ export async function fetchFromBlockscout(
 const NAME_LOOKUP_LIMIT = 12
 
 interface MetadataResponse {
-  addresses?: Record<string, { tags?: { name?: string; tagType?: string }[] }>
+  addresses?: Record<string, { tags?: { name?: string; tagType?: string; slug?: string }[] }>
 }
 
 /**
@@ -316,9 +322,15 @@ export async function fetchAddressNames(
   if (meta.ok) {
     for (const [address, entry] of Object.entries(meta.data.addresses ?? {})) {
       const label = entry.tags?.find((t) => t.tagType === 'name' && t.name)?.name
-      if (!label) continue
+      const { kind, flagged } = classifyTags(entry.tags)
+      if (!label && !kind && !flagged) continue
       const key = address.toLowerCase()
-      names[key] = { name: label, isContract: names[key]?.isContract ?? null }
+      names[key] = {
+        name: label ?? names[key]?.name ?? null,
+        isContract: names[key]?.isContract ?? null,
+        kind: kind ?? names[key]?.kind ?? null,
+        flagged: flagged || Boolean(names[key]?.flagged),
+      }
     }
   }
   return names

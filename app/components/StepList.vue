@@ -8,6 +8,23 @@ const props = defineProps<{ steps: Step[]; people: Record<string, Participant> }
 const LIMIT = 12
 const expanded = ref(false)
 const visible = computed(() => (expanded.value ? props.steps : props.steps.slice(0, LIMIT)))
+
+/** Where each participant is first mentioned: only there does it say what it is. */
+const firstMention = computed(() => {
+  const seen = new Map<string, string>()
+  visible.value.forEach((step, index) => {
+    const slots: [string, string][] = [
+      ['from', step.from],
+      ['to', step.to],
+      ...step.via.map((a): [string, string] => ['via', a]),
+    ]
+    for (const [slot, address] of slots)
+      if (!seen.has(address)) seen.set(address, `${index}:${slot}`)
+  })
+  return seen
+})
+const first = (index: number, slot: string, address: string) =>
+  firstMention.value.get(address) === `${index}:${slot}`
 </script>
 
 <template>
@@ -18,22 +35,22 @@ const visible = computed(() => (expanded.value ? props.steps : props.steps.slice
         <p>
           <template v-if="step.kind === 'mint'">
             <AmountChip :part="step.amount as never" :usd="step.usd" /> was newly created and given
-            to <Party :party="people[step.to]" :address="step.to" />
+            to <Party :party="people[step.to]" :address="step.to" :describe="first(index, 'to', step.to)" />
           </template>
           <template v-else-if="step.kind === 'burn'">
-            <Party :party="people[step.from]" :address="step.from" /> destroyed
+            <Party :party="people[step.from]" :address="step.from" :describe="first(index, 'from', step.from)" /> destroyed
             <AmountChip :part="step.amount as never" :usd="step.usd" />
           </template>
           <template v-else>
-            <Party :party="people[step.from]" :address="step.from" /> sent
+            <Party :party="people[step.from]" :address="step.from" :describe="first(index, 'from', step.from)" /> sent
             <AmountChip :part="step.amount as never" :usd="step.usd" /> to
-            <Party :party="people[step.to]" :address="step.to" />
+            <Party :party="people[step.to]" :address="step.to" :describe="first(index, 'to', step.to)" />
           </template>
           <span v-if="step.via.length" class="via">
             passing through
             <template v-for="(address, i) in step.via" :key="address">
               <template v-if="i > 0">, </template>
-              <Party :party="people[address]" :address="address" />
+              <Party :party="people[address]" :address="address" :describe="first(index, 'via', address)" />
             </template>
           </span>
         </p>

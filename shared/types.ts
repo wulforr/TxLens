@@ -1,4 +1,5 @@
 import type { Address, Hex } from 'viem'
+import type { ServiceKind } from './names'
 
 /** Which upstream answered, and therefore how complete the call data is. */
 export type TraceProvenance = 'callTracer' | 'internalTransactions' | 'logsOnly'
@@ -68,6 +69,10 @@ export interface Coverage {
 export interface AddressInfo {
   name: string | null
   isContract: boolean | null
+  /** From the explorer's category tags, when it has any we recognise. */
+  kind?: ServiceKind | null
+  /** Public labels tie this address to a hack or scam. */
+  flagged?: boolean
 }
 
 export interface RawTransaction {

@@ -1,7 +1,7 @@
 import type { DecodedLog } from '~~/server/decode/logs'
 import type { TokenMeta } from '~~/server/tokens/metadata'
 import { amountPart, type NarrativePart } from './format'
-import { humanize } from './names'
+import { humanize, type ServiceKind } from './names'
 import type { AddressInfo } from './types'
 import type { WireFlowEdge } from './wire'
 
@@ -13,16 +13,28 @@ export interface Participant {
   role: Role
   /** From the data source: a program (true), an ordinary account (false), or unknown. */
   isContract?: boolean | null
-  /** Position in PARTY_HUES, by first appearance; absent for the sender and the zero address. */
+  /** Position in PARTY_TONES, by first appearance; absent for the sender and the zero address. */
   tone?: number
+  kind?: ServiceKind | null
+  flagged?: boolean
+  /** The sender's own public name, since its label is always "Sender". */
+  knownAs?: string | null
 }
 
 /**
- * Dot colours, handed out in order of appearance so neighbours never match.
- * No reds or greens (they read as failed/succeeded) and nothing near the
- * sender's brass accent.
+ * Dot colours, handed out in order of appearance. Hues are spread round the
+ * wheel and neighbours alternate light and dark, so adjacent participants never
+ * look alike. Pure reds and greens (failed/succeeded) and the sender's brass are
+ * left out. Colour is never the only cue: every dot sits beside a label.
  */
-export const PARTY_HUES = [200, 300, 175, 255, 330, 225, 275, 190] as const
+export const PARTY_TONES = [
+  { hue: 210, light: 64 },
+  { hue: 330, light: 70 },
+  { hue: 170, light: 48 },
+  { hue: 75, light: 60 },
+  { hue: 270, light: 78 },
+  { hue: 195, light: 82 },
+] as const
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
@@ -85,7 +97,11 @@ export function labelParticipants(
         isContract,
       }
     }
-    if (out[address].role !== 'sender' && out[address].role !== 'zero') out[address].tone = tone++
+    const person = out[address]
+    person.kind = names[address]?.kind ?? null
+    person.flagged = Boolean(names[address]?.flagged)
+    if (person.role === 'sender') person.knownAs = names[address]?.name ?? null
+    if (person.role !== 'sender' && person.role !== 'zero') person.tone = tone++
   }
   return out
 }

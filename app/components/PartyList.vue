@@ -4,9 +4,23 @@ import type { Participant } from '~~/shared/steps'
 
 defineProps<{ people: Participant[]; explorerBase: string }>()
 
-/** What each kind of participant is, for a reader who has never met one. */
+const KIND_HINT: Record<string, string> = {
+  exchange: 'Part of an automated currency exchange',
+  lending: 'A lending and borrowing service',
+  bridge: 'Moves money between blockchains',
+  staking: 'A staking service, which earns rewards for helping run Ethereum',
+  company: 'An account run by a crypto exchange company',
+  stablecoin: 'Runs a stablecoin, a token designed to hold a steady value, usually $1',
+  token: 'The program that keeps track of a token',
+}
+
+/** What each participant is, for a reader who has never met one. */
 function hint(person: Participant): string | null {
-  if (person.role === 'sender') return 'Started and paid for this transaction'
+  if (person.role === 'sender')
+    return person.knownAs
+      ? `Started and paid for this transaction. Publicly labelled “${person.knownAs}”`
+      : 'Started and paid for this transaction'
+  if (person.kind) return KIND_HINT[person.kind] ?? null
   if (person.isContract === true) return 'A program running on Ethereum'
   if (person.isContract === false) return 'An ordinary account, held by a person or company'
   return null
@@ -20,6 +34,9 @@ function hint(person: Participant): string | null {
         <span class="who">
           <Party :party="person" :address="person.address" />
           <span v-if="hint(person)" class="hint">{{ hint(person) }}</span>
+          <span v-if="person.flagged" class="hint flagged">
+            Public labels link this address to a hack or scam
+          </span>
         </span>
         <code class="address">{{ truncateAddress(person.address) }}</code>
         <span class="actions">
@@ -66,6 +83,9 @@ li {
   color: var(--text-faint);
   font-size: 0.8rem;
   padding-left: 1.1em;
+}
+.flagged {
+  color: var(--warn);
 }
 .address {
   color: var(--text-faint);

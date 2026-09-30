@@ -20,7 +20,7 @@ import { toWire } from '~~/shared/wire'
  * Bump whenever the payload shape or the decoding changes: old cached payloads
  * are then simply never read again, with no manual flush.
  */
-const CACHE_VERSION = 12
+const CACHE_VERSION = 13
 
 export default defineEventHandler(async (event) => {
   const parsed = parseTxRef(getRouterParam(event, 'chain'), getRouterParam(event, 'hash'))
@@ -72,6 +72,8 @@ export default defineEventHandler(async (event) => {
       names[address] = {
         name: info.name ?? names[address]?.name ?? null,
         isContract: names[address]?.isContract ?? info.isContract,
+        kind: names[address]?.kind ?? info.kind ?? null,
+        flagged: Boolean(names[address]?.flagged || info.flagged),
       }
     }
     tx = { ...tx, names }
