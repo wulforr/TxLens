@@ -4,7 +4,12 @@ import { computed, ref } from 'vue'
 import type { Participant } from '~~/shared/steps'
 import type { WireActivity } from '~~/shared/wire'
 
-const props = defineProps<{ activity: WireActivity; people?: Record<string, Participant> }>()
+const props = defineProps<{
+  activity: WireActivity
+  people?: Record<string, Participant>
+  /** The read was complete, so an empty list really means no internal calls. */
+  complete?: boolean
+}>()
 
 const LIMIT = 10
 const expanded = ref(false)
@@ -41,6 +46,7 @@ function eth(value: string): string {
       </button>
     </template>
 
+    <p v-else-if="complete" class="empty">This transaction made no internal calls.</p>
     <p v-else class="empty">
       No internal call data. This source only exposes event logs for this transaction, so
       calls that moved no tokens are invisible here.

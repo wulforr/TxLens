@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { DecodedCall } from '~~/server/decode/calls'
+import type { TokenMeta } from '~~/server/tokens/metadata'
 import { truncateAddress } from '~~/shared/address'
+import { formatLogArg } from '~~/shared/format'
 
-const props = defineProps<{ call: DecodedCall }>()
+const props = defineProps<{
+  call: DecodedCall
+  /** The contract called; when it's a known token, amounts read in real units. */
+  target?: string | null
+  tokens?: Record<string, TokenMeta>
+}>()
 
 /** Contract-supplied strings are hostile input. Cap them. See CLAUDE.md. */
 const MAX_NAME = 64
@@ -34,7 +41,12 @@ const safeName = computed(() => {
     <dl v-if="call.args.length" class="args">
       <template v-for="arg in call.args" :key="arg.name">
         <dt>{{ arg.name }} <span class="type">{{ arg.type }}</span></dt>
-        <dd><ArgValue :type="arg.type" :value="arg.value" /></dd>
+        <dd>
+          <code v-if="target && tokens && formatLogArg(target, arg, tokens)">{{
+            formatLogArg(target, arg, tokens)
+          }}</code>
+          <ArgValue v-else :type="arg.type" :value="arg.value" />
+        </dd>
       </template>
     </dl>
 

@@ -7,7 +7,7 @@ const props = defineProps<{ provenance: TraceProvenance }>()
 const COPY: Record<TraceProvenance, { label: string; detail: string; tone: string }> = {
   callTracer: {
     label: 'full trace',
-    detail: 'nested call frames and per-frame gas',
+    detail: 'every internal call, read from a node',
     tone: 'good',
   },
   internalTransactions: {

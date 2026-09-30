@@ -71,9 +71,10 @@ li {
   color: var(--text-faint);
   font-size: 0.8rem;
 }
+/* Right beside the address they act on, not pushed to the far edge. */
 .actions {
-  margin-left: auto;
   display: inline-flex;
-  gap: 0.25rem;
+  gap: 0.1rem;
+  margin-left: -0.5rem;
 }
 </style>

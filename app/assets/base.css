@@ -101,6 +101,39 @@ button.more {
   color: var(--text-dim);
 }
 
+/*
+ * Disclosure rows. Styling a <summary> as flex drops the browser's own
+ * triangle, which left "Technical details" looking like plain text. One drawn
+ * chevron for every summary on the page, turning as it opens.
+ */
+summary {
+  cursor: pointer;
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+summary::before {
+  content: "";
+  flex: none;
+  align-self: center;
+  display: inline-block;
+  width: 0.42em;
+  height: 0.42em;
+  margin: 0 0.7em 0.1em 0.1em;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  opacity: 0.7;
+  transform: rotate(-45deg);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+details[open] > summary::before {
+  transform: rotate(45deg) translate(-0.1em, -0.1em);
+}
+summary:hover::before {
+  opacity: 1;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

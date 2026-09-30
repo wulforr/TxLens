@@ -42,7 +42,7 @@ const blockNumber = computed(() => BigInt(props.data.blockNumber).toLocaleString
     </dl>
 
     <h3>Function called</h3>
-    <CallRow :call="data.call" />
+    <CallRow :call="data.call" :target="data.to" :tokens="data.tokens" />
 
     <h3>Internal calls</h3>
     <p v-if="data.coverage.calls === 'truncated'" class="partial" role="status">
@@ -53,7 +53,11 @@ const blockNumber = computed(() => BigInt(props.data.blockNumber).toLocaleString
       The internal-call data could not be fetched. This is a failed request, not an empty
       result — the transaction may well have internal calls.
     </p>
-    <CallActivity :activity="data.activity" :people="people" />
+    <CallActivity
+      :activity="data.activity"
+      :people="people"
+      :complete="data.coverage.calls === 'complete'"
+    />
 
     <h3>Events <span class="count">{{ data.logs.length }}</span></h3>
     <p v-if="data.coverage.logs === 'truncated'" class="partial" role="status">
@@ -121,6 +125,13 @@ const blockNumber = computed(() => BigInt(props.data.blockNumber).toLocaleString
 }
 .title {
   font-weight: 500;
+}
+.technical > summary {
+  padding: 0.4rem 0;
+}
+.technical > summary:hover .title,
+.technical > summary:focus-visible .title {
+  color: var(--accent);
 }
 .hint {
   font-size: 0.85rem;

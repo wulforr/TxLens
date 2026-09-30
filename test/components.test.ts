@@ -369,3 +369,43 @@ describe('HashForm', () => {
     expect(wrapper.find('[role="alert"]').text()).toContain('64 characters')
   })
 })
+
+describe('CallRow amounts', () => {
+  it('reads a token amount in real units when the called contract is a known token', () => {
+    const SHIB = '0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce'
+    const wrapper = mount(CallRow, {
+      props: {
+        call: {
+          confidence: 'decoded' as const,
+          contractName: 'SHIB',
+          via: null,
+          functionName: 'transfer',
+          signature: 'transfer(address,uint256)',
+          selector: '0xa9059cbb' as const,
+          raw: '0xa9059cbb' as const,
+          args: [{ name: 'amount', type: 'uint256', value: '50693552078053780000000000000000' }],
+        },
+        target: SHIB,
+        tokens: {
+          [`erc20:${SHIB}`]: {
+            address: SHIB as `0x${string}`,
+            symbol: 'SHIB',
+            name: 'SHIBA INU',
+            decimals: 18,
+            standard: 'ERC-20' as const,
+            iconUrl: null,
+          },
+        },
+      },
+    })
+    expect(wrapper.text()).toContain('50.69 trillion SHIB')
+  })
+})
+
+describe('CallActivity empty states', () => {
+  it('says there were no internal calls when the read was complete', () => {
+    expect(
+      mount(CallActivity, { props: { activity: { kind: 'none' }, complete: true } }).text(),
+    ).toBe('This transaction made no internal calls.')
+  })
+})
