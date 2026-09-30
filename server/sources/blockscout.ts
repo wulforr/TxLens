@@ -3,6 +3,7 @@ import type { HttpClient } from '~~/server/utils/http'
 import { normaliseAddress } from '~~/shared/address'
 import type { ChainConfig } from '~~/shared/chains'
 import type {
+  AddressInfo,
   CallActivity,
   CallKind,
   Coverage,
@@ -14,6 +15,37 @@ import type {
 
 interface BlockscoutAddress {
   hash: string
+  name?: string | null
+  ens_domain_name?: string | null
+  is_contract?: boolean | null
+  metadata?: { tags?: { name?: string | null; tagType?: string | null }[] | null } | null
+}
+
+/**
+ * Every address object Blockscout returns carries whatever it knows about that
+ * address. Keeping it costs nothing and turns hex into names a person can read.
+ * Preference: ENS (chosen by the owner), then a curated `name` tag ("Uniswap V4:
+ * Pool Manager"), then the verified contract name. Generic tags like
+ * "Token Contract" are ignored — they describe a category, not an entity.
+ */
+function harvest(
+  names: Record<string, AddressInfo>,
+  address: BlockscoutAddress | null | undefined,
+) {
+  if (!address?.hash) return
+  let key: string
+  try {
+    key = normaliseAddress(address.hash)
+  } catch {
+    return
+  }
+  const tag = address.metadata?.tags?.find((t) => t.tagType === 'name' && t.name)?.name
+  const name = address.ens_domain_name || tag || address.name || null
+  const previous = names[key]
+  names[key] = {
+    name: previous?.name ?? name,
+    isContract: address.is_contract ?? previous?.isContract ?? null,
+  }
 }
 
 interface BlockscoutRevertParameter {
@@ -45,6 +77,7 @@ interface BlockscoutTransaction {
   revert_reason: BlockscoutRevertReason
   gas_used: string
   gas_price: string
+  confirmations?: number | null
 }
 
 interface BlockscoutLogItem {
@@ -198,10 +231,20 @@ export async function fetchFromBlockscout(
     calls: statusOf(internalResult),
   }
 
+  const names: Record<string, AddressInfo> = {}
+  harvest(names, core.data.from)
+  harvest(names, core.data.to)
+  for (const item of logsResult.items) harvest(names, item.address)
+  for (const item of internalResult.items) {
+    harvest(names, item.from)
+    harvest(names, item.to)
+  }
+
   return {
     chainId: chain.id,
     hash,
     blockNumber: BigInt(core.data.block_number),
+    confirmations: core.data.confirmations ?? 0,
     timestamp: Math.floor(Date.parse(core.data.timestamp) / 1000),
     from: normaliseAddress(core.data.from.hash),
     to: core.data.to ? normaliseAddress(core.data.to.hash) : null,
@@ -214,6 +257,7 @@ export async function fetchFromBlockscout(
     logs,
     activity,
     coverage,
+    names,
     provenance: calls.length > 0 ? 'internalTransactions' : 'logsOnly',
     sourceName: 'blockscout',
   }

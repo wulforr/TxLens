@@ -8,6 +8,12 @@ export interface ChainConfig {
   blockscoutBase: string
   /** Blocks to wait before a transaction is safe to cache forever. */
   reorgDepth: number
+  /** Block explorer for "view on explorer" links, no trailing slash. */
+  explorerBase: string
+  /** DefiLlama coin-id prefix for this chain's tokens ("ethereum:0x…"). */
+  pricePrefix: string
+  /** DefiLlama coin id for the native asset. */
+  nativePriceId: string
 }
 
 export const CHAINS: readonly ChainConfig[] = [
@@ -19,6 +25,9 @@ export const CHAINS: readonly ChainConfig[] = [
     nativeDecimals: 18,
     blockscoutBase: 'https://eth.blockscout.com',
     reorgDepth: 64,
+    explorerBase: 'https://etherscan.io',
+    pricePrefix: 'ethereum',
+    nativePriceId: 'coingecko:ethereum',
   },
 ] as const
 

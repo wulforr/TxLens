@@ -13,6 +13,12 @@ export interface FlowEdge {
   asset: AssetRef
   amount: bigint
   origin: FlowOrigin
+  /**
+   * Position in the transaction: outer value first, then internal calls, then
+   * logs by index. Reducers keep the surviving edge's order, so the plain-language
+   * steps can be told in the sequence they happened.
+   */
+  order: number
   /** Set by the reducers when an edge was netted: the pre-netting total. */
   gross?: bigint
   /** Conduit addresses this edge was routed through before collapsing. */
@@ -62,15 +68,16 @@ function address(value: string | undefined): Address | null {
  */
 export function buildFlow(tx: RawTransaction, logs: DecodedLog[]): FlowEdge[] {
   const edges: FlowEdge[] = []
+  const push = (edge: Omit<FlowEdge, 'order'>) => edges.push({ ...edge, order: edges.length })
 
   if (tx.value > 0n && tx.to) {
-    edges.push({ from: tx.from, to: tx.to, asset: NATIVE, amount: tx.value, origin: 'native' })
+    push({ from: tx.from, to: tx.to, asset: NATIVE, amount: tx.value, origin: 'native' })
   }
 
   if (tx.activity.kind === 'flat') {
     for (const call of tx.activity.calls) {
       if (call.value > 0n && call.to) {
-        edges.push({
+        push({
           from: call.from,
           to: call.to,
           asset: NATIVE,
@@ -95,7 +102,7 @@ export function buildFlow(tx: RawTransaction, logs: DecodedLog[]): FlowEdge[] {
       // name is reading the answer the decoder already worked out.
       const tokenId = arg(log.args, 'tokenId')
       if (tokenId !== undefined) {
-        edges.push({
+        push({
           from,
           to,
           asset: { kind: 'nft', address: log.address, tokenId },
@@ -107,7 +114,7 @@ export function buildFlow(tx: RawTransaction, logs: DecodedLog[]): FlowEdge[] {
 
       const amount = toBigInt(arg(log.args, 'value'))
       if (amount === null) continue
-      edges.push({
+      push({
         from,
         to,
         asset: { kind: 'erc20', address: log.address },
@@ -121,7 +128,7 @@ export function buildFlow(tx: RawTransaction, logs: DecodedLog[]): FlowEdge[] {
       const id = arg(log.args, 'id')
       const amount = toBigInt(arg(log.args, 'value'))
       if (id === undefined || amount === null) continue
-      edges.push({
+      push({
         from,
         to,
         asset: { kind: 'nft', address: log.address, tokenId: id },
@@ -137,7 +144,7 @@ export function buildFlow(tx: RawTransaction, logs: DecodedLog[]): FlowEdge[] {
       ids.forEach((id, index) => {
         const amount = toBigInt(values[index])
         if (amount === null) return
-        edges.push({
+        push({
           from,
           to,
           asset: { kind: 'nft', address: log.address, tokenId: id },

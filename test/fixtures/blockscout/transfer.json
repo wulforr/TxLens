@@ -3,20 +3,43 @@
     "hash": "0xaaaa000000000000000000000000000000000000000000000000000000000001",
     "block_number": 21000000,
     "timestamp": "2026-01-15T10:30:00.000000Z",
-    "from": { "hash": "0x1111111111111111111111111111111111111111" },
-    "to": { "hash": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" },
+    "from": {
+      "hash": "0x1111111111111111111111111111111111111111",
+      "is_contract": false,
+      "ens_domain_name": "alice.eth"
+    },
+    "to": {
+      "hash": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "name": "FiatTokenProxy",
+      "is_contract": true,
+      "metadata": {
+        "tags": [
+          {
+            "name": "Token Contract",
+            "tagType": "generic"
+          },
+          {
+            "name": "USDC Stablecoin",
+            "tagType": "name"
+          }
+        ]
+      }
+    },
     "value": "1000000000000000000",
     "raw_input": "0xa9059cbb0000000000000000000000002222222222222222222222222222222222222222000000000000000000000000000000000000000000000000000000000000007b",
     "status": "ok",
     "result": "success",
     "revert_reason": null,
     "gas_used": "52000",
-    "gas_price": "12000000000"
+    "gas_price": "12000000000",
+    "confirmations": 145369
   },
   "logs": {
     "items": [
       {
-        "address": { "hash": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" },
+        "address": {
+          "hash": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+        },
         "topics": [
           "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
           "0x0000000000000000000000001111111111111111111111111111111111111111",
@@ -33,8 +56,15 @@
     "items": [
       {
         "type": "call",
-        "from": { "hash": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" },
-        "to": { "hash": "0x3333333333333333333333333333333333333333" },
+        "from": {
+          "hash": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+        },
+        "to": {
+          "hash": "0x3333333333333333333333333333333333333333",
+          "name": "PoolManager",
+          "is_contract": true,
+          "metadata": null
+        },
         "value": "500000000000000000",
         "error": null
       }

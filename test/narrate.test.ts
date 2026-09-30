@@ -65,6 +65,7 @@ const edge = (from: string, to: string, amount: bigint, asset: AssetRef = NATIVE
   asset,
   amount,
   origin: asset.kind === 'native' ? 'native' : 'erc20',
+  order: 0,
 })
 
 function ctx(edges: FlowEdge[], overrides: Partial<NarrativeContext> = {}): NarrativeContext {

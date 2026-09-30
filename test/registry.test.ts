@@ -13,6 +13,7 @@ function stubTx(sourceName: string): RawTransaction {
     chainId: 1,
     hash,
     blockNumber: 1n,
+    confirmations: 100,
     timestamp: 0,
     from: '0x1111111111111111111111111111111111111111',
     to: null,
@@ -25,6 +26,7 @@ function stubTx(sourceName: string): RawTransaction {
     logs: [],
     activity: { kind: 'none' },
     coverage: { logs: 'complete', calls: 'complete' },
+    names: {},
     provenance: 'logsOnly',
     sourceName,
   }

@@ -18,6 +18,7 @@ const tx: RawTransaction = {
   chainId: 1,
   hash: '0xaaaa000000000000000000000000000000000000000000000000000000000001',
   blockNumber: 21000000n,
+  confirmations: 100,
   timestamp: 1768473000,
   from: '0x1111111111111111111111111111111111111111',
   to: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
@@ -41,6 +42,7 @@ const tx: RawTransaction = {
     ],
   },
   coverage: { logs: 'complete', calls: 'complete' },
+  names: {},
   provenance: 'internalTransactions',
   sourceName: 'blockscout',
 }
@@ -102,6 +104,7 @@ describe('toWire', () => {
           asset: { kind: 'native' } as const,
           amount: 1000000000000000000n,
           origin: 'native' as const,
+          order: 0,
         },
       ],
     })

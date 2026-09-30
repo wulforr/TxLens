@@ -64,10 +64,18 @@ export interface Coverage {
   calls: SectionStatus
 }
 
+/** What the data source knows about an address, harvested from responses it already sent. */
+export interface AddressInfo {
+  name: string | null
+  isContract: boolean | null
+}
+
 export interface RawTransaction {
   chainId: number
   hash: Hex
   blockNumber: bigint
+  /** Blocks built on top of this one. Past the chain's reorg depth, the result is final. */
+  confirmations: number
   timestamp: number
   from: Address
   to: Address | null
@@ -80,6 +88,8 @@ export interface RawTransaction {
   logs: RawLog[]
   activity: CallActivity
   coverage: Coverage
+  /** lowercased address -> name and contract flag, for every address the source mentioned */
+  names: Record<string, AddressInfo>
   provenance: TraceProvenance
   sourceName: string
 }

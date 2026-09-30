@@ -16,6 +16,7 @@ const e = (from: string, to: string, amount: bigint, asset: AssetRef = NATIVE): 
   asset,
   amount,
   origin: asset.kind === 'native' ? 'native' : 'erc20',
+  order: 0,
 })
 
 const CASES: Record<string, FlowEdge[]> = {
@@ -85,6 +86,20 @@ describe('reduceFlow', () => {
 
   it('leaves a fan-out alone', () => {
     expect(reduceFlow(CASES.fanOut).edges).toHaveLength(3)
+  })
+
+  it('keeps the surviving edge in transaction order', () => {
+    const edges = [
+      { ...e(A, B, 100n), order: 0 },
+      { ...e(B, C, 100n), order: 1 },
+      { ...e(C, D, 7n, USDT), order: 2 },
+    ]
+    // A->B->C collapses into A->C, which keeps the first leg's position.
+    expect(
+      reduceFlow(edges)
+        .edges.map((edge) => edge.order)
+        .sort(),
+    ).toEqual([0, 2])
   })
 
   it('is idempotent', () => {

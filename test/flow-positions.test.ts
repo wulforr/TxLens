@@ -13,6 +13,7 @@ const edge = (from: string, to: string, amount: bigint): FlowEdge => ({
   asset: NATIVE,
   amount,
   origin: 'native',
+  order: 0,
 })
 
 describe('netPositions', () => {

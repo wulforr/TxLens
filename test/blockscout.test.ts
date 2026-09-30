@@ -88,6 +88,30 @@ describe('fetchFromBlockscout', () => {
   })
 
   // The live API returns revert_reason as a decoded object, not a string.
+  it('carries confirmations, which decide whether the result is final', async () => {
+    const tx = (await fetchFromBlockscout(fakeHttp(routes()), chain, hash))!
+    expect(tx.confirmations).toBe(145369)
+  })
+
+  it('harvests a human name for every address it sees, at no extra request', async () => {
+    const http = fakeHttp(routes())
+    const tx = (await fetchFromBlockscout(http, chain, hash))!
+    // ENS wins, then a name-type tag, then the contract name.
+    expect(tx.names['0x1111111111111111111111111111111111111111']).toEqual({
+      name: 'alice.eth',
+      isContract: false,
+    })
+    expect(tx.names['0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48']).toEqual({
+      name: 'USDC Stablecoin',
+      isContract: true,
+    })
+    expect(tx.names['0x3333333333333333333333333333333333333333']).toEqual({
+      name: 'PoolManager',
+      isContract: true,
+    })
+    expect(http.calls).toHaveLength(3)
+  })
+
   it('maps a reverted transaction with a decoded Error(string)', async () => {
     const reverted = {
       ...fixture.transaction,
