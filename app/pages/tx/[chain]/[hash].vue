@@ -110,13 +110,13 @@ const failure = computed(() => {
     }
   if (status === 400)
     return {
-      title: 'That isn’t a transaction ID',
-      body: 'A transaction ID starts with 0x, followed by 64 characters using 0–9 and a–f. Check you copied the whole thing.',
+      title: 'That isn’t a transaction hash',
+      body: 'A transaction hash starts with 0x, followed by 64 characters using 0–9 and a–f. Check you copied the whole thing.',
     }
   if (status === 404)
     return {
-      title: 'No transaction with that ID on Ethereum',
-      body: 'Check you copied the whole ID, and that it’s from Ethereum rather than another blockchain. If it was sent in the last minute, it may not be recorded yet: try again shortly.',
+      title: 'No transaction with that hash on Ethereum',
+      body: 'Check you copied the whole hash, and that it’s from Ethereum rather than another blockchain. If it was sent in the last minute, it may not be recorded yet: try again shortly.',
     }
   return {
     title: 'The data source didn’t answer',
@@ -210,10 +210,10 @@ useHead({
         <h2 id="people-title">Who’s involved</h2>
         <PartyList :people="involved" :explorer-base="chain?.explorerBase ?? 'https://etherscan.io'" />
         <p class="txid">
-          Transaction ID
+          Transaction hash
           <span class="txid-value">
             <code :title="data.hash">{{ truncateAddress(data.hash, 10, 8) }}</code>
-            <CopyButton :value="data.hash" label="Copy the full transaction ID" />
+            <CopyButton :value="data.hash" label="Copy the full transaction hash" />
           <a
             class="icon"
             :href="`${chain?.explorerBase ?? 'https://etherscan.io'}/tx/${data.hash}`"

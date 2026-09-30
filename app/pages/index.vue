@@ -11,7 +11,7 @@ const groups = [
   <div>
     <h1>What actually happened in this transaction?</h1>
     <p class="lede">
-      Paste an Ethereum transaction ID and get it explained in plain words — who paid whom, how much,
+      Paste an Ethereum transaction hash (the long code starting with 0x) and get it explained in plain words — who paid whom, how much,
       and what it was worth.
     </p>
     <HashForm autofocus />
@@ -21,7 +21,7 @@ const groups = [
     </p>
 
     <section id="examples" class="examples" aria-labelledby="examples-title">
-      <h2 id="examples-title">No transaction ID to hand? Try one of these.</h2>
+      <h2 id="examples-title">No transaction hash to hand? Try one of these.</h2>
       <div v-for="group in groups" :key="group.id" class="group">
         <h3 :id="`${group.id}-title`">{{ group.title }}</h3>
         <ul :aria-labelledby="`${group.id}-title`">

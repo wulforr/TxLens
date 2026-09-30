@@ -479,7 +479,7 @@ describe('HashForm', () => {
     expect(wrapper.find('[role="alert"]').text()).toContain('64 characters')
   })
 
-  it('accepts a pasted Etherscan link and pulls the ID out of it', async () => {
+  it('accepts a pasted Etherscan link and pulls the hash out of it', async () => {
     const pushed: string[] = []
     const wrapper = mount(HashForm, {
       global: { provide: { [routerKey as symbol]: { push: (to: string) => pushed.push(to) } } },
