@@ -10,12 +10,15 @@ const route = useRoute()
 const chainSlug = route.params.chain as string
 const hash = route.params.hash as string
 const chain = getChain(chainSlug)
+// Checked here too, so a mistyped link fails instantly instead of after a round trip.
+const validHash = /^0x[0-9a-fA-F]{64}$/.test(hash)
 
 // Client-only and lazy: the shell and skeleton paint immediately instead of the
 // page freezing while a large transaction decodes. Cached ones return in ms.
 const { data, error, pending } = useFetch<TxPayload>(`/api/tx/${chainSlug}/${hash}`, {
   server: false,
   lazy: true,
+  immediate: validHash,
 })
 
 // Honest progress: these are the real stages, but we can't measure them, so the
@@ -85,8 +88,7 @@ const when = computed(() =>
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-        timeZoneName: 'short',
-      })
+      }) + ' (your time)'
     : '',
 )
 
@@ -99,7 +101,7 @@ const fee = computed(() => {
 })
 
 const failure = computed(() => {
-  const status = error.value?.statusCode
+  const status = validHash ? error.value?.statusCode : 400
   const message = error.value?.statusMessage
   if (status === 400 && message === 'unknown chain')
     return {
@@ -114,7 +116,7 @@ const failure = computed(() => {
   if (status === 404)
     return {
       title: 'No transaction with that ID on Ethereum',
-      body: 'Check you copied the whole ID, and that it’s from Ethereum rather than another network such as Base or Polygon.',
+      body: 'Check you copied the whole ID, and that it’s from Ethereum rather than another blockchain. If it was sent in the last minute, it may not be recorded yet: try again shortly.',
     }
   return {
     title: 'The data source didn’t answer',
@@ -128,7 +130,7 @@ useHead({
       ? `${data.value.narrative.headline} · TxLens`
       : pending.value
         ? 'Explaining… · TxLens'
-        : error.value
+        : error.value || !validHash
           ? `${failure.value.title} · TxLens`
           : 'TxLens',
   ),
@@ -139,14 +141,19 @@ useHead({
   <div>
     <!-- Before the request starts (and in the server's HTML) there is neither
          data nor error yet; show the skeleton then too, never a blank page. -->
-    <div v-if="pending || (!data && !error)" class="loading" role="status" aria-live="polite">
+    <div
+      v-if="validHash && (pending || (!data && !error))"
+      class="loading"
+      role="status"
+      aria-live="polite"
+    >
       <div class="skeleton headline" />
       <div class="skeleton line" />
       <div class="skeleton line short" />
       <p class="stage">{{ stage }}</p>
     </div>
 
-    <div v-else-if="error" class="failed" role="alert">
+    <div v-else-if="error || !validHash" class="failed" role="alert">
       <h1>{{ failure.title }}</h1>
       <p>{{ failure.body }}</p>
       <HashForm label="Try again" :initial="hash" />
@@ -175,7 +182,7 @@ useHead({
           >Network fee</Term>
           {{ fee }}
         </span>
-        <span v-if="Object.keys(data.prices).length">Dollar values use prices from that day</span>
+        <span v-if="steps.some((step) => step.usd != null)">Dollar values use prices from that day</span>
       </p>
 
       <FlowStrip v-if="steps.length" :steps="steps" :people="people" :sender="data.from" />
@@ -340,7 +347,7 @@ article > :deep(.technical) {
   font-weight: 560;
   margin: 0 0 0.6rem;
 }
-.failed p {
+.failed p:not(.examples-link) {
   color: var(--text-dim);
   max-width: 58ch;
   margin: 0 0 2rem;

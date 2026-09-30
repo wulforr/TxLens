@@ -32,4 +32,10 @@ header {
   font-size: 0.75rem;
   color: var(--text-faint);
 }
+/* Phones: the home page says the same thing in full; keep the header to one line. */
+@media (max-width: 480px) {
+  .tagline {
+    display: none;
+  }
+}
 </style>

@@ -109,7 +109,7 @@ const blockNumber = computed(() => BigInt(props.data.blockNumber).toLocaleString
       :aria-expanded="allGroups"
       @click="allGroups = !allGroups"
     >
-      {{ allGroups ? 'Show fewer' : `Show all ${groups.length} event groups` }}
+      {{ allGroups ? 'Show fewer event groups' : `Show all ${groups.length} event groups` }}
     </button>
   </details>
 </template>

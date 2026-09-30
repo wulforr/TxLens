@@ -56,6 +56,7 @@ h1 {
   margin: 0 0 2.25rem;
 }
 .note {
+  max-width: 62ch;
   color: var(--text-faint);
   font-size: 0.85rem;
   margin-top: 1.75rem;

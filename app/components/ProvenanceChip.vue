@@ -41,7 +41,7 @@ const copy = computed(() => COPY[props.provenance])
   gap: 0 0.5ch;
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  padding: 0.2rem 0.6rem;
+  padding: 0.25rem 0.6rem;
   border: 1px solid var(--line);
   border-radius: 2px;
   color: var(--text-dim);

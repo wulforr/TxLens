@@ -42,7 +42,7 @@ function eth(value: string): string {
         :aria-expanded="expanded"
         @click="expanded = !expanded"
       >
-        {{ expanded ? 'Show fewer' : `Show all ${calls.length} internal calls` }}
+        {{ expanded ? 'Show fewer internal calls' : `Show all ${calls.length} internal calls` }}
       </button>
     </template>
 
