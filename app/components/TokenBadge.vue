@@ -37,6 +37,8 @@ const letter = computed(() => (/^[a-z]/i.test(props.symbol) ? props.symbol[0] : 
       referrerpolicy="no-referrer"
       @error="failed = true"
     >
+    <!-- Ether has no token contract, so no upstream logo: draw its mark. -->
+    <Icon v-else-if="symbol === 'ETH'" class="generic" name="eth" :size="size" />
     <span
       v-else-if="letter"
       class="fallback"

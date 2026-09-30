@@ -1,6 +1,6 @@
 <script setup lang="ts">
 withDefaults(
-  defineProps<{ name: 'copy' | 'check' | 'external' | 'arrow' | 'coin'; size?: number }>(),
+  defineProps<{ name: 'copy' | 'check' | 'external' | 'arrow' | 'coin' | 'eth'; size?: number }>(),
   {
     size: 14,
   },
@@ -35,6 +35,10 @@ withDefaults(
     <template v-else-if="name === 'coin'">
       <circle cx="8" cy="8" r="5.75" />
       <path d="M8 5v6M6.25 6.5h2.5a1 1 0 0 1 0 2h-1.5a1 1 0 0 0 0 2h2.5" />
+    </template>
+    <template v-else-if="name === 'eth'">
+      <path d="M8 1.75L3.75 8.4 8 10.9l4.25-2.5L8 1.75z" />
+      <path d="M3.75 9.6L8 14.25l4.25-4.65L8 12.1 3.75 9.6z" />
     </template>
   </svg>
 </template>

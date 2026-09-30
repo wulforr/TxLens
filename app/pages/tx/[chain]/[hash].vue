@@ -64,6 +64,9 @@ const involved = computed(() => {
   for (const address of [
     data.value?.from ?? '',
     ...steps.value.flatMap((s) => [s.from, ...s.via, s.to]),
+    // The contract the sender called is involved even when no value moved,
+    // as in a failed transaction.
+    data.value?.to ?? '',
   ]) {
     const person = people.value[address]
     if (!person || person.role === 'zero' || seen.has(address)) continue
@@ -125,7 +128,9 @@ useHead({
       ? `${data.value.narrative.headline} · TxLens`
       : pending.value
         ? 'Explaining… · TxLens'
-        : 'TxLens',
+        : error.value
+          ? `${failure.value.title} · TxLens`
+          : 'TxLens',
   ),
 })
 </script>
@@ -142,7 +147,10 @@ useHead({
     <div v-else-if="error" class="failed" role="alert">
       <h1>{{ failure.title }}</h1>
       <p>{{ failure.body }}</p>
-      <HashForm label="Try another transaction ID" />
+      <HashForm label="Try again" :initial="hash" />
+      <p class="examples-link">
+        Or <NuxtLink to="/#examples">pick an example transaction</NuxtLink>.
+      </p>
     </div>
 
     <article v-else-if="data">
@@ -317,6 +325,11 @@ article > :deep(.technical) {
   }
 }
 
+.examples-link {
+  margin: 1rem 0 0;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
 .failed h1 {
   font-size: 1.4rem;
   font-weight: 560;

@@ -3,7 +3,7 @@
     <NuxtRouteAnnouncer />
     <header>
       <NuxtLink to="/" class="brand">TxLens</NuxtLink>
-      <span class="tagline">read-only · no wallet connection, ever</span>
+      <span class="tagline">reads public data only · never asks for your wallet</span>
     </header>
     <main><NuxtPage /></main>
   </div>

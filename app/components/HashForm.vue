@@ -2,20 +2,22 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-const props = withDefaults(defineProps<{ label?: string; autofocus?: boolean }>(), {
-  label: 'Transaction ID',
-  autofocus: false,
-})
+const props = withDefaults(
+  defineProps<{ label?: string; autofocus?: boolean; initial?: string }>(),
+  { label: 'Transaction ID', autofocus: false, initial: '' },
+)
 
-const hash = ref('')
+// Starts with what the reader typed last, so a typo can be fixed in place.
+const hash = ref(props.initial)
 const error = ref<string | null>(null)
 const router = useRouter()
-const HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/
+// Found anywhere in the input, so a pasted Etherscan link works as well as the bare ID.
+const HASH_PATTERN = /0x[0-9a-fA-F]{64}(?![0-9a-fA-F])/
 const id = `hash-${Math.random().toString(36).slice(2, 8)}`
 
 function submit() {
-  const value = hash.value.trim()
-  if (!HASH_PATTERN.test(value)) {
+  const value = hash.value.trim().match(HASH_PATTERN)?.[0]
+  if (!value) {
     error.value =
       'That isn’t a transaction ID. It should start with 0x, followed by 64 characters using 0–9 and a–f.'
     return
@@ -32,7 +34,7 @@ function submit() {
       <input
         :id="id"
         v-model="hash"
-        placeholder="0x…"
+        placeholder="0x… or an Etherscan link"
         autocomplete="off"
         spellcheck="false"
         :autofocus="autofocus"

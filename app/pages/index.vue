@@ -15,9 +15,12 @@ const groups = [
       and what it was worth.
     </p>
     <HashForm autofocus />
-    <p class="note">Ethereum only, for now. Read-only: TxLens never connects to a wallet.</p>
+    <p class="note">
+      Works with Ethereum transactions only, for now. If you found it on Etherscan, it’s Ethereum.
+      TxLens only reads public data and never asks for your wallet.
+    </p>
 
-    <section class="examples" aria-labelledby="examples-title">
+    <section id="examples" class="examples" aria-labelledby="examples-title">
       <h2 id="examples-title">No transaction ID to hand? Try one of these.</h2>
       <div v-for="group in groups" :key="group.id" class="group">
         <h3 :id="`${group.id}-title`">{{ group.title }}</h3>

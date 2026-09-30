@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { config, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
+import { routerKey } from 'vue-router'
 import AmountChip from '~~/app/components/AmountChip.vue'
 import ArgValue from '~~/app/components/ArgValue.vue'
 import CallActivity from '~~/app/components/CallActivity.vue'
@@ -394,6 +395,16 @@ describe('HashForm', () => {
     await wrapper.find('input').setValue('0xdeadbeef')
     await wrapper.find('form').trigger('submit')
     expect(wrapper.find('[role="alert"]').text()).toContain('64 characters')
+  })
+
+  it('accepts a pasted Etherscan link and pulls the ID out of it', async () => {
+    const pushed: string[] = []
+    const wrapper = mount(HashForm, {
+      global: { provide: { [routerKey as symbol]: { push: (to: string) => pushed.push(to) } } },
+    })
+    await wrapper.find('input').setValue(`https://etherscan.io/tx/0x${'AB'.repeat(32)}`)
+    await wrapper.find('form').trigger('submit')
+    expect(pushed).toEqual([`/tx/ethereum/0x${'ab'.repeat(32)}`])
   })
 })
 
