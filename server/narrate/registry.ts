@@ -24,8 +24,17 @@ export function narrate(ctx: NarrativeContext): Narrative {
   for (const { name, match } of MATCHERS) {
     const result = match(ctx)
     if (!result) continue
+    // Only the explorer's public labels can say "hack"; we never infer it.
+    const sender = ctx.names?.[ctx.sender.toLowerCase()]
+    const details = sender?.flagged
+      ? [
+          ...result.details,
+          `Public labels link the sender${sender.name ? ` (“${sender.name}”)` : ''} to a hack or scam.`,
+        ]
+      : result.details
     return {
       ...result,
+      details,
       headline: partsToText(result.parts),
       matcher: name,
       // A story computed over a partial event list may simply be wrong.

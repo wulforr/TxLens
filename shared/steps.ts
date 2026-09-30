@@ -100,7 +100,9 @@ export function labelParticipants(
     const person = out[address]
     person.kind = names[address]?.kind ?? null
     person.flagged = Boolean(names[address]?.flagged)
-    if (person.role === 'sender') person.knownAs = names[address]?.name ?? null
+    // A public name only for an ordinary account: a contract's "name" is its code's identifier.
+    if (person.role === 'sender' && names[address]?.isContract === false)
+      person.knownAs = names[address]?.name ?? null
     if (person.role !== 'sender' && person.role !== 'zero') person.tone = tone++
   }
   return out

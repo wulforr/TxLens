@@ -109,7 +109,7 @@ describe('narrate', () => {
       ]),
     )
     expect(result.matcher).toBe('swap')
-    expect(result.headline).toBe('Swapped 935.11816 USDT for 2,336.94 01')
+    expect(result.headline).toBe('The sender swapped 935.11816 USDT for 2,336.94 01')
   })
 
   it('keeps each amount structured so a symbol like "01" never reads as digits', () => {
@@ -189,7 +189,7 @@ describe('narrate', () => {
   it('describes a plain transfer', () => {
     const result = narrate(ctx([edge(ALICE, MAKER, 5000000n, usdtAsset)]))
     expect(result.matcher).toBe('transfer')
-    expect(result.headline).toBe('Sent 5 USDT to 0x333333…333333')
+    expect(result.headline).toBe('The sender sent 5 USDT to 0x333333…333333')
   })
 
   it('names the recipient in the headline when the source knows it', () => {
@@ -198,7 +198,7 @@ describe('narrate', () => {
         names: { [MAKER]: { name: 'Lido: Execution Layer Rewards Vault', isContract: true } },
       }),
     )
-    expect(result.headline).toBe('Sent 5 USDT to Lido: Execution Layer Rewards Vault')
+    expect(result.headline).toBe('The sender sent 5 USDT to Lido: Execution Layer Rewards Vault')
   })
 
   it('describes a mint', () => {
@@ -265,8 +265,11 @@ describe('narrate', () => {
       }),
     )
     expect(result.headline).not.toContain('No value moved')
-    expect(result.headline).toBe('Euler Exploit Contract 1 came out ahead by 8,000 USDT')
-    expect(result.details).toContain('Euler Pool lost 8,001 USDT (≈ $8,001).')
+    // The priced loss leads; the gain follows.
+    expect(result.headline).toBe('Euler Pool lost 8,001 USDT')
+    expect(result.details).toContain(
+      'Euler Exploit Contract 1 came out ahead by 8,000 USDT (≈ $8,000).',
+    )
     expect(result.details.join(' ')).toContain('sender’s own balance didn’t change')
   })
 
@@ -277,7 +280,9 @@ describe('narrate', () => {
         prices: new Map([[`erc20:${USDT}`, 1]]),
       }),
     )
-    expect(result.headline).toBe('The contract the sender called came out ahead by 8,000 USDT')
+    expect(result.details[0]).toContain(
+      'The contract the sender called came out ahead by 8,000 USDT',
+    )
   })
 
   it('still describes movement without prices, rather than inventing a ranking', () => {
@@ -295,7 +300,30 @@ describe('narrate', () => {
       }),
     )
     expect(result.matcher).toBe('received')
-    expect(result.headline).toBe('Received 173,600 ETH from Ronin Bridge V1')
+    expect(result.headline).toBe('The sender received 173,600 ETH from Ronin Bridge V1')
+  })
+
+  it('never uses a contract wallet’s code name as the subject', () => {
+    const result = narrate(
+      ctx([edge(ALICE, MAKER, 5000000n, usdtAsset)], {
+        names: { [ALICE]: { name: 'Vb', isContract: true } },
+      }),
+    )
+    expect(result.headline).toBe('The sender sent 5 USDT to 0x333333…333333')
+  })
+
+  it('uses the sender’s public name as the subject, and repeats a hack label only from the source', () => {
+    const result = narrate(
+      ctx([edge(ALICE, MAKER, 5000000n, usdtAsset)], {
+        names: { [ALICE]: { name: 'Bybit Exploiter 1', isContract: false, flagged: true } },
+      }),
+    )
+    expect(result.headline).toBe('Bybit Exploiter 1 sent 5 USDT to 0x333333…333333')
+    expect(result.details.join(' ')).toContain(
+      'Public labels link the sender (“Bybit Exploiter 1”) to a hack or scam.',
+    )
+    const plain = narrate(ctx([edge(ALICE, MAKER, 5000000n, usdtAsset)]))
+    expect(plain.details.join(' ')).not.toContain('hack')
   })
 
   it('says so plainly when no value moved', () => {

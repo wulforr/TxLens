@@ -23,6 +23,16 @@ const capped = (value: string, max = 160) =>
 
 const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
 
+/**
+ * Who did it: the sender's public name when it has one ("titanbuilder.eth"),
+ * else "The sender". Only for ordinary accounts, whose names come from ENS or
+ * public labels; a contract wallet's "name" is its code's identifier ("Vb").
+ */
+function subject(ctx: NarrativeContext): string {
+  const info = ctx.names?.[ctx.sender.toLowerCase()]
+  return info?.name && info.isContract === false ? humanize(info.name) : 'The sender'
+}
+
 /** "A", "A and B", "A, B and C". */
 function listOf(items: string[]): string {
   if (items.length <= 1) return items.join('')
@@ -80,7 +90,7 @@ export const approval: Matcher = (ctx) => {
   return {
     parts: [
       text(
-        `Gave ${spender ? nameOf(ctx, spender) : 'another address'} permission to spend the sender’s ${token}`,
+        `${subject(ctx)} gave ${spender ? nameOf(ctx, spender) : 'another address'} permission to spend their ${token}`,
       ),
     ],
     details: approvals.length > 1 ? [`${approvals.length} approvals in this transaction.`] : [],
@@ -157,7 +167,7 @@ export const swap: Matcher = (ctx) => {
 
   return {
     parts: [
-      text('Swapped '),
+      text(`${subject(ctx)} swapped `),
       amountPart(paid.amount, paid.asset, ctx.tokens),
       text(' for '),
       amountPart(got.amount, got.asset, ctx.tokens),
@@ -178,7 +188,7 @@ export const transfer: Matcher = (ctx) => {
 
   return {
     parts: [
-      text('Sent '),
+      text(`${subject(ctx)} sent `),
       amountPart(paid.amount, paid.asset, ctx.tokens),
       text(` to ${nameOf(ctx, recipients[0][0])}`),
     ],
@@ -239,7 +249,7 @@ export const received: Matcher = (ctx) => {
 
   return {
     parts: [
-      text('Received '),
+      text(`${subject(ctx)} received `),
       amountPart(got.amount, got.asset, ctx.tokens),
       ...(source ? [text(` from ${nameOf(ctx, source)}`)] : []),
     ],
@@ -285,18 +295,24 @@ export const fallback: Matcher = (ctx) => {
     return { parts: [text(`Moved value between ${count} addresses`)], details: [note] }
   }
 
-  const details = [note]
+  // The consequence leads when we can price it: who lost is the fact a reader
+  // needs first. Who gained follows. Both are measured, never inferred.
+  const winnerLine = `${capitalise(nameOf(ctx, winner.address))} came out ahead by ${formatAmount(winner.top.amount, winner.top.asset, ctx.tokens)} (${usdText(winner.usd)}).`
   const loser = [...ranked].reverse().find((row) => row.usd < 0 && row.top.amount < 0n)
   if (loser) {
-    details.unshift(
-      `${capitalise(nameOf(ctx, loser.address))} lost ${formatAmount(-loser.top.amount, loser.top.asset, ctx.tokens)} (${usdText(-loser.usd)}).`,
-    )
+    return {
+      parts: [
+        text(`${capitalise(nameOf(ctx, loser.address))} lost `),
+        amountPart(-loser.top.amount, loser.top.asset, ctx.tokens),
+      ],
+      details: [winnerLine, note],
+    }
   }
   return {
     parts: [
       text(`${capitalise(nameOf(ctx, winner.address))} came out ahead by `),
       amountPart(winner.top.amount, winner.top.asset, ctx.tokens),
     ],
-    details,
+    details: [note],
   }
 }
