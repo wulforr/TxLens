@@ -6,7 +6,8 @@ import type { ChainConfig } from '~~/shared/chains'
 /**
  * Below this, DefiLlama itself is unsure of the price — typically a thin or
  * manipulated market. Showing no dollar value beats showing a fabricated one,
- * which is exactly what a scam token would want.
+ * which is exactly what a scam token would want. A quote with no score at all
+ * (older historical quotes omit it) is accepted: absent is not low.
  */
 export const MIN_CONFIDENCE = 0.9
 
@@ -77,7 +78,7 @@ export async function fetchUsdPrices(
       quote &&
       typeof quote.price === 'number' &&
       Number.isFinite(quote.price) &&
-      (quote.confidence ?? 0) >= MIN_CONFIDENCE
+      (quote.confidence === undefined || quote.confidence >= MIN_CONFIDENCE)
         ? quote.price
         : null
     await store.setItem(`usd:${day}:${id}`, { price } satisfies CachedPrice)

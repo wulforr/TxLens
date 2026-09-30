@@ -83,6 +83,16 @@ describe('fetchUsdPrices', () => {
     expect(prices.has(`erc20:${COIN}`)).toBe(false)
   })
 
+  it('accepts a price that carries no confidence score, as older quotes do', async () => {
+    // DefiLlama omits `confidence` on historical coingecko-sourced quotes. A
+    // missing score means "not flagged", not "untrustworthy".
+    const http = fakeHttp({
+      [url(['coingecko:ethereum'])]: { coins: { 'coingecko:ethereum': { price: 2963.2 } } },
+    })
+    const { prices } = await fetchUsdPrices(http, memoryStore(), chain, [eth], TS)
+    expect(prices.get('native')).toBe(2963.2)
+  })
+
   it('survives the price api being down, and does not cache the failure', async () => {
     const store = memoryStore()
     const down = fakeHttp({}) // every url 404s

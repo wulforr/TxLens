@@ -7,7 +7,9 @@ import { netPositions } from '~~/server/flow/positions'
 import { reduceFlow } from '~~/server/flow/reduce'
 import { narrate } from '~~/server/narrate/registry'
 import { fetchUsdPrices } from '~~/server/prices/usd'
+import { fetchAddressNames } from '~~/server/sources/blockscout'
 import { fetchTransaction } from '~~/server/sources/registry'
+import { applyTrace, fetchTraceCalls } from '~~/server/sources/trace'
 import { createTokenResolver } from '~~/server/tokens/metadata'
 import { createHttpClient } from '~~/server/utils/http'
 import { bestEffortStore } from '~~/server/utils/store'
@@ -18,7 +20,7 @@ import { toWire } from '~~/shared/wire'
  * Bump whenever the payload shape or the decoding changes: old cached payloads
  * are then simply never read again, with no manual flush.
  */
-const CACHE_VERSION = 5
+const CACHE_VERSION = 10
 
 export default defineEventHandler(async (event) => {
   const parsed = parseTxRef(getRouterParam(event, 'chain'), getRouterParam(event, 'hash'))
@@ -35,9 +37,16 @@ export default defineEventHandler(async (event) => {
   const cached = await store.getItem(cacheKey)
   if (cached) return cached as ReturnType<typeof toWire>
 
-  const tx = await fetchTransaction(http, chain, hash)
+  let tx = await fetchTransaction(http, chain, hash)
   if (!tx) {
     throw createError({ statusCode: 404, statusMessage: 'transaction not found' })
+  }
+
+  // The indexer's internal-call list is missing or capped: ask a node for the
+  // full execution trace instead. Only on demand, to stay inside free limits.
+  if (tx.coverage.calls !== 'complete') {
+    const traced = await fetchTraceCalls(http, chain, hash)
+    if (traced) tx = applyTrace(tx, traced)
   }
 
   const resolver = createAbiResolver(http, chain)
@@ -50,6 +59,23 @@ export default defineEventHandler(async (event) => {
   // narrative reads the reduced list, because that is what the reader sees.
   const rawFlow = buildFlow(tx, logs)
   const { edges } = reduceFlow(rawFlow)
+
+  // Participants that only appeared in a trace or a token event have no name
+  // yet. Look them up, so the story says "Bybit Exploiter 1", not a hex string.
+  const unnamed = [...new Set(edges.flatMap((e) => [e.from, e.to]))].filter(
+    (a) => !tx.names[a]?.name && a !== '0x0000000000000000000000000000000000000000',
+  )
+  if (unnamed.length > 0) {
+    const found = await fetchAddressNames(http, chain, unnamed)
+    const names = { ...tx.names }
+    for (const [address, info] of Object.entries(found)) {
+      names[address] = {
+        name: info.name ?? names[address]?.name ?? null,
+        isContract: names[address]?.isContract ?? info.isContract,
+      }
+    }
+    tx = { ...tx, names }
+  }
 
   const tokenResolver = createTokenResolver(http, chain)
   const tokens = new Map(
@@ -68,6 +94,16 @@ export default defineEventHandler(async (event) => {
     ),
   )
 
+  // Priced before the story is written, so the narrative can rank who came
+  // out ahead by value. Native is always priced: the network fee is paid in it.
+  const { prices, complete: pricesComplete } = await fetchUsdPrices(
+    http,
+    store,
+    chain,
+    [{ kind: 'native' }, ...edges.map((edge) => edge.asset)],
+    tx.timestamp,
+  )
+
   const narrative = narrate({
     tx,
     logs,
@@ -76,16 +112,8 @@ export default defineEventHandler(async (event) => {
     tokens,
     sender: tx.from,
     names: tx.names,
+    prices,
   })
-
-  // Native is always priced: the network fee is paid in it.
-  const { prices, complete: pricesComplete } = await fetchUsdPrices(
-    http,
-    store,
-    chain,
-    [{ kind: 'native' }, ...edges.map((edge) => edge.asset)],
-    tx.timestamp,
-  )
 
   const payload = toWire(tx, call, logs, { narrative, flow: edges, tokens, prices })
 

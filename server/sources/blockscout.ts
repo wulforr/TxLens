@@ -1,5 +1,5 @@
 import type { Hex } from 'viem'
-import type { HttpClient } from '~~/server/utils/http'
+import { type HttpClient, withTimeout } from '~~/server/utils/http'
 import { normaliseAddress } from '~~/shared/address'
 import type { ChainConfig } from '~~/shared/chains'
 import type {
@@ -94,7 +94,15 @@ interface BlockscoutInternalItem {
   to: BlockscoutAddress | null
   value: string
   error: string | null
+  success?: boolean
 }
+
+/**
+ * Blockscout traces older transactions on demand, and until it has, this
+ * endpoint hangs rather than failing. Give up early: the route falls back to a
+ * node trace, which answers in well under a second.
+ */
+const INTERNAL_TIMEOUT_MS = 8_000
 
 const CALL_KINDS: Record<string, CallKind> = {
   call: 'CALL',
@@ -204,7 +212,10 @@ export async function fetchFromBlockscout(
 
   const [logsResult, internalResult] = await Promise.all([
     fetchPagedItems<BlockscoutLogItem>(http, `${base}/logs`),
-    fetchPagedItems<BlockscoutInternalItem>(http, `${base}/internal-transactions`),
+    fetchPagedItems<BlockscoutInternalItem>(
+      withTimeout(http, INTERNAL_TIMEOUT_MS),
+      `${base}/internal-transactions`,
+    ),
   ])
 
   const logs: RawLog[] = logsResult.items.map((item) => ({
@@ -219,7 +230,7 @@ export async function fetchFromBlockscout(
     from: normaliseAddress(item.from.hash),
     to: item.to ? normaliseAddress(item.to.hash) : null,
     value: toBigInt(item.value),
-    error: item.error,
+    error: item.error ?? (item.success === false ? 'reverted' : null),
   }))
 
   // Blockscout returns internal transactions as a flat list with no parent
@@ -261,4 +272,54 @@ export async function fetchFromBlockscout(
     provenance: calls.length > 0 ? 'internalTransactions' : 'logsOnly',
     sourceName: 'blockscout',
   }
+}
+
+/** Enough for the participants of almost any story; bounds the cost of a big one. */
+const NAME_LOOKUP_LIMIT = 12
+
+interface MetadataResponse {
+  addresses?: Record<string, { tags?: { name?: string; tagType?: string }[] }>
+}
+
+/**
+ * Names for addresses that only turned up in a node trace or inside a token
+ * event — neither carries the labels an indexer list response embeds.
+ *
+ * Labels ("Bybit Exploiter 1", "India Covid-Crypto Relief Fund") come from
+ * Blockscout's metadata service in one batched call; its single-address
+ * endpoint omits them. A capped per-address call then supplies what the
+ * metadata service doesn't: whether it's a contract, and its contract name.
+ * Any failure just leaves an address unnamed.
+ */
+export async function fetchAddressNames(
+  http: HttpClient,
+  chain: ChainConfig,
+  addresses: string[],
+): Promise<Record<string, AddressInfo>> {
+  const wanted = [...new Set(addresses.map((a) => a.toLowerCase()))]
+  const names: Record<string, AddressInfo> = {}
+  if (wanted.length === 0) return names
+
+  const [meta, ...details] = await Promise.all([
+    http.getJson<MetadataResponse>(
+      `https://metadata.services.blockscout.com/api/v1/metadata?addresses=${wanted.join(',')}&chainId=${chain.id}`,
+    ),
+    ...wanted
+      .slice(0, NAME_LOOKUP_LIMIT)
+      .map((address) =>
+        http.getJson<BlockscoutAddress>(`${chain.blockscoutBase}/api/v2/addresses/${address}`),
+      ),
+  ])
+
+  for (const result of details) if (result.ok) harvest(names, result.data)
+
+  if (meta.ok) {
+    for (const [address, entry] of Object.entries(meta.data.addresses ?? {})) {
+      const label = entry.tags?.find((t) => t.tagType === 'name' && t.name)?.name
+      if (!label) continue
+      const key = address.toLowerCase()
+      names[key] = { name: label, isContract: names[key]?.isContract ?? null }
+    }
+  }
+  return names
 }

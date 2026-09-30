@@ -133,6 +133,72 @@ describe('buildFlow', () => {
     expect(edges[0].amount).toBe(0n)
   })
 
+  it('counts no value on delegate and static calls, which run code without transferring', () => {
+    // A proxy DELEGATECALLs its implementation with the caller's value repeated
+    // on the frame. Counting it would invent a second transfer of the same money.
+    const edges = buildFlow(
+      tx({
+        activity: {
+          kind: 'flat',
+          calls: [
+            { kind: 'DELEGATECALL', from: bob, to: carol, value: 500n, error: null },
+            { kind: 'STATICCALL', from: bob, to: carol, value: 500n, error: null },
+            { kind: 'CALLCODE', from: bob, to: carol, value: 500n, error: null },
+            { kind: 'CALL', from: bob, to: alice, value: 500n, error: null },
+          ],
+        },
+      }),
+      [],
+    )
+    expect(edges.map((e) => e.to)).toEqual([alice])
+  })
+
+  it('ignores value on an internal call that reverted, because it never moved', () => {
+    const edges = buildFlow(
+      tx({
+        activity: {
+          kind: 'flat',
+          calls: [{ kind: 'CALL', from: bob, to: carol, value: 500n, error: 'reverted' }],
+        },
+      }),
+      [],
+    )
+    expect(edges).toHaveLength(0)
+  })
+
+  it('treats a WETH withdrawal as the holder giving their WETH back to the contract', () => {
+    const WETH = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+    const edges = buildFlow(tx(), [
+      log('Withdrawal', WETH, [
+        ['src', 'address', alice],
+        ['wad', 'uint256', '173600'],
+      ]),
+    ])
+    expect(edges[0]).toMatchObject({ from: alice, to: WETH, amount: 173600n })
+    expect(assetKey(edges[0]!.asset)).toBe(`erc20:${WETH}`)
+  })
+
+  it('treats a WETH deposit as the contract issuing WETH to the holder', () => {
+    const WETH = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+    const edges = buildFlow(tx(), [
+      log('Deposit', WETH, [
+        ['dst', 'address', alice],
+        ['wad', 'uint256', '5'],
+      ]),
+    ])
+    expect(edges[0]).toMatchObject({ from: WETH, to: alice, amount: 5n })
+  })
+
+  it('does not read a Deposit event from some other contract as WETH', () => {
+    const edges = buildFlow(tx(), [
+      log('Deposit', usdt, [
+        ['dst', 'address', alice],
+        ['wad', 'uint256', '5'],
+      ]),
+    ])
+    expect(edges).toHaveLength(0)
+  })
+
   it('skips logs it could not decode', () => {
     const raw: DecodedLog = { ...log('Transfer', usdt, []), confidence: 'raw', eventName: null }
     expect(buildFlow(tx(), [raw])).toHaveLength(0)

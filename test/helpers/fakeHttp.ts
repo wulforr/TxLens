@@ -20,5 +20,11 @@ export function fakeHttp(routes: Record<string, unknown>): FakeHttpClient {
       }
       return { ok: true, data: routes[url] as T }
     },
+    async postJson<T>(url: string): Promise<HttpResult<T>> {
+      const key = `POST ${url}`
+      calls.push(key)
+      if (!(key in routes)) return { ok: false, status: 404, reason: 'http 404' }
+      return { ok: true, data: routes[key] as T }
+    },
   }
 }

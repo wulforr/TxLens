@@ -14,6 +14,10 @@ export interface ChainConfig {
   pricePrefix: string
   /** DefiLlama coin id for the native asset. */
   nativePriceId: string
+  /** Wrapped native token; it emits Deposit/Withdrawal instead of Transfer. */
+  wrappedNative: string
+  /** JSON-RPC endpoint serving debug_traceTransaction, for when the indexer stalls. */
+  traceRpc: string | null
 }
 
 export const CHAINS: readonly ChainConfig[] = [
@@ -28,10 +32,17 @@ export const CHAINS: readonly ChainConfig[] = [
     explorerBase: 'https://etherscan.io',
     pricePrefix: 'ethereum',
     nativePriceId: 'coingecko:ethereum',
+    wrappedNative: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+    // dRPC's keyless public endpoint; verified to serve callTracer on 2026-09-30.
+    traceRpc: 'https://eth.drpc.org',
   },
 ] as const
 
 export function getChain(slug: string): ChainConfig | undefined {
   const wanted = slug.toLowerCase()
   return CHAINS.find((chain) => chain.slug === wanted)
+}
+
+export function getChainById(id: number): ChainConfig | undefined {
+  return CHAINS.find((chain) => chain.id === id)
 }

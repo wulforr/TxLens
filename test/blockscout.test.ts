@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fetchFromBlockscout } from '~~/server/sources/blockscout'
+import { fetchAddressNames, fetchFromBlockscout } from '~~/server/sources/blockscout'
 import { getChain } from '~~/shared/chains'
 import fixture from './fixtures/blockscout/transfer.json'
 import { fakeHttp } from './helpers/fakeHttp'
@@ -159,5 +159,40 @@ describe('fetchFromBlockscout', () => {
     const tx = (await fetchFromBlockscout(fakeHttp(routes({ [base]: reverted })), chain, hash))!
     expect(tx.status).toBe('reverted')
     expect(tx.revertReason).toBeNull()
+  })
+})
+
+describe('fetchAddressNames', () => {
+  const FUND = '0x68a99f89e475a078645f4bac491360afe255dff1'
+  const EOA = '0x1111111111111111111111111111111111111111'
+  const url = (a: string) => `${chain.blockscoutBase}/api/v2/addresses/${a}`
+  const meta = (as: string[]) =>
+    `https://metadata.services.blockscout.com/api/v1/metadata?addresses=${as.join(',')}&chainId=1`
+
+  it('takes labels from the metadata service, which the address endpoint omits', async () => {
+    const http = fakeHttp({
+      [meta([FUND, EOA])]: {
+        addresses: {
+          '0x68A99f89E475a078645f4BAC491360aFe255Dff1': {
+            tags: [
+              { name: 'India Covid-Crypto Relief Fund', tagType: 'name' },
+              { name: 'Smart Account', tagType: 'generic' },
+            ],
+          },
+        },
+      },
+      [url(FUND)]: { hash: FUND, name: 'GnosisSafeProxy', is_contract: true },
+      [url(EOA)]: { hash: EOA, is_contract: false },
+    })
+    const names = await fetchAddressNames(http, chain, [FUND, EOA])
+    expect(names[FUND]).toEqual({ name: 'India Covid-Crypto Relief Fund', isContract: true })
+    expect(names[EOA]).toEqual({ name: null, isContract: false })
+  })
+
+  it('makes one metadata call however many addresses, caps the rest, and survives failures', async () => {
+    const many = Array.from({ length: 30 }, (_, i) => `0x${String(i).padStart(40, '0')}`)
+    const http = fakeHttp({})
+    expect(await fetchAddressNames(http, chain, many)).toEqual({})
+    expect(http.calls.length).toBe(13)
   })
 })

@@ -2,8 +2,11 @@ import type { Address } from 'viem'
 import type { DecodedArg } from '~~/server/decode/calls'
 import type { DecodedLog } from '~~/server/decode/logs'
 import { normaliseAddress } from '~~/shared/address'
+import { getChainById } from '~~/shared/chains'
 import type { RawTransaction } from '~~/shared/types'
 import { type AssetRef, NATIVE } from './assets'
+
+const VALUE_MOVING = new Set(['CALL', 'CREATE', 'CREATE2', 'SELFDESTRUCT'])
 
 export type FlowOrigin = 'native' | 'erc20' | 'erc721' | 'erc1155'
 
@@ -76,7 +79,11 @@ export function buildFlow(tx: RawTransaction, logs: DecodedLog[]): FlowEdge[] {
 
   if (tx.activity.kind === 'flat') {
     for (const call of tx.activity.calls) {
-      if (call.value > 0n && call.to) {
+      // Only these move ETH. DELEGATECALL and CALLCODE run another contract's
+      // code in the caller's own context, and traces repeat the caller's value
+      // on the frame; STATICCALL can't carry value. A reverted call moved
+      // nothing, whatever its value field says.
+      if (VALUE_MOVING.has(call.kind) && call.value > 0n && call.to && !call.error) {
         push({
           from: call.from,
           to: call.to,
@@ -88,8 +95,31 @@ export function buildFlow(tx: RawTransaction, logs: DecodedLog[]): FlowEdge[] {
     }
   }
 
+  const wrapped = getChainById(tx.chainId)?.wrappedNative
+
   for (const log of logs) {
     if (log.confidence !== 'decoded' || !log.eventName) continue
+
+    // WETH announces wrapping and unwrapping with Deposit/Withdrawal instead of
+    // Transfer, so without this a bridge unwrapping 173,600 WETH looks like
+    // nothing happened. Scoped to the real wrapped-native contract: plenty of
+    // other contracts emit events with these names that mean something else.
+    if (
+      wrapped &&
+      log.address === wrapped &&
+      (log.eventName === 'Deposit' || log.eventName === 'Withdrawal')
+    ) {
+      const holder = address(arg(log.args, log.eventName === 'Deposit' ? 'dst' : 'src'))
+      const amount = toBigInt(arg(log.args, 'wad'))
+      if (!holder || amount === null) continue
+      const asset: AssetRef = { kind: 'erc20', address: log.address }
+      push(
+        log.eventName === 'Deposit'
+          ? { from: log.address, to: holder, asset, amount, origin: 'erc20' }
+          : { from: holder, to: log.address, asset, amount, origin: 'erc20' },
+      )
+      continue
+    }
 
     const from = address(arg(log.args, 'from'))
     const to = address(arg(log.args, 'to'))
