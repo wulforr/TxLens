@@ -259,6 +259,29 @@ describe('Narrative USD', () => {
       },
     })
     expect(wrapper.find('.usd').text()).toBe('≈ $935.12')
+    // The headline names what the reader is looking at, in words.
+    expect(wrapper.find('.glossary').text()).toContain('USDT (Tether) is a')
+  })
+
+  it('says a headline amount has no known price rather than leaving it blank', () => {
+    const wrapper = mount(AmountChip, {
+      props: {
+        part: {
+          kind: 'amount' as const,
+          text: '2,336.94 01',
+          value: '2,336.94',
+          symbol: '01',
+          iconUrl: null,
+          address: null,
+          raw: false,
+          assetKey: 'erc20:0x01',
+          units: '1',
+        },
+        usd: null,
+        showMissingPrice: true,
+      },
+    })
+    expect(wrapper.find('.usd').text()).toBe('no known price')
   })
 })
 

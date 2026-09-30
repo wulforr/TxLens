@@ -2,7 +2,13 @@
 import type { NarrativePart } from '~~/shared/format'
 import { usdText } from '~~/shared/steps'
 
-defineProps<{ part: NarrativePart & { kind: 'amount' }; usd?: number | null; size?: number }>()
+defineProps<{
+  part: NarrativePart & { kind: 'amount' }
+  usd?: number | null
+  size?: number
+  /** Say so when there's no price, instead of leaving the reader to wonder. */
+  showMissingPrice?: boolean
+}>()
 </script>
 
 <template>
@@ -12,6 +18,7 @@ defineProps<{ part: NarrativePart & { kind: 'amount' }; usd?: number | null; siz
     <TokenBadge class="token" :symbol="part.symbol" :icon-url="part.iconUrl" :size="size ?? 16" />
     <span v-if="part.raw" class="raw">raw units</span>
     <span v-if="usd != null" class="usd">{{ usdText(usd) }}</span>
+    <span v-else-if="showMissingPrice && !part.raw" class="usd">no known price</span>
   </span>
 </template>
 

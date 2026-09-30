@@ -52,7 +52,13 @@ const glossary = computed(() => {
       <template v-if="narrative.parts?.length">
         <template v-for="(part, index) in narrative.parts" :key="index">
           <template v-if="part.kind === 'text'">{{ part.text }}</template>
-          <AmountChip v-else :part="part" :usd="partUsd(part, tokens, prices)" :size="20" />
+          <AmountChip
+            v-else
+            :part="part"
+            :usd="partUsd(part, tokens, prices)"
+            :size="20"
+            show-missing-price
+          />
         </template>
       </template>
       <template v-else>{{ narrative.headline }}</template>

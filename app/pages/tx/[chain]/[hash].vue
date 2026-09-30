@@ -164,6 +164,7 @@ useHead({
           >Network fee</Term>
           {{ fee }}
         </span>
+        <span v-if="Object.keys(data.prices).length">Dollar values use prices from that day</span>
       </p>
 
       <section aria-labelledby="steps-title">
