@@ -1,7 +1,7 @@
 import type { AssetRef } from '~~/server/flow/assets'
 import { assetKey, isZeroAddress } from '~~/server/flow/assets'
 import { truncateAddress } from '~~/shared/address'
-import { formatAmount } from '~~/shared/format'
+import { amountPart, formatAmount, text } from '~~/shared/format'
 import type { Matcher, NarrativeContext } from './types'
 
 /** Assets the sender lost and gained, ignoring zero nets. */
@@ -26,9 +26,11 @@ function senderMoves(ctx: NarrativeContext) {
 export const failed: Matcher = (ctx) => {
   if (ctx.tx.status !== 'reverted') return null
   return {
-    headline: ctx.tx.revertReason
-      ? `Reverted: ${ctx.tx.revertReason}`
-      : 'Reverted, with no reason given',
+    parts: [
+      text(
+        ctx.tx.revertReason ? `Reverted: ${ctx.tx.revertReason}` : 'Reverted, with no reason given',
+      ),
+    ],
     details: ['Gas was still spent. No state change survived.'],
   }
 }
@@ -47,7 +49,7 @@ export const approval: Matcher = (ctx) => {
   const token = first.contractName ?? truncateAddress(first.address)
 
   return {
-    headline: `Approved ${spender ? truncateAddress(spender) : 'a spender'} to move ${token}`,
+    parts: [text(`Approved ${spender ? truncateAddress(spender) : 'a spender'} to move ${token}`)],
     details: approvals.length > 1 ? [`${approvals.length} approvals in this transaction.`] : [],
   }
 }
@@ -56,7 +58,7 @@ export const mint: Matcher = (ctx) => {
   const minted = ctx.edges.find((edge) => isZeroAddress(edge.from) && edge.to === ctx.sender)
   if (!minted) return null
   return {
-    headline: `Minted ${formatAmount(minted.amount, minted.asset, ctx.tokens)}`,
+    parts: [text('Minted '), amountPart(minted.amount, minted.asset, ctx.tokens)],
     details: [],
   }
 }
@@ -65,7 +67,7 @@ export const burn: Matcher = (ctx) => {
   const burned = ctx.edges.find((edge) => isZeroAddress(edge.to) && edge.from === ctx.sender)
   if (!burned) return null
   return {
-    headline: `Burned ${formatAmount(burned.amount, burned.asset, ctx.tokens)}`,
+    parts: [text('Burned '), amountPart(burned.amount, burned.asset, ctx.tokens)],
     details: [],
   }
 }
@@ -96,11 +98,12 @@ export const swap: Matcher = (ctx) => {
   if (venues.length > 0) details.push(`Touched ${venues.slice(0, 4).join(', ')}.`)
 
   return {
-    headline: `Swapped ${formatAmount(paid.amount, paid.asset, ctx.tokens)} for ${formatAmount(
-      got.amount,
-      got.asset,
-      ctx.tokens,
-    )}`,
+    parts: [
+      text('Swapped '),
+      amountPart(paid.amount, paid.asset, ctx.tokens),
+      text(' for '),
+      amountPart(got.amount, got.asset, ctx.tokens),
+    ],
     details,
   }
 }
@@ -116,9 +119,11 @@ export const transfer: Matcher = (ctx) => {
   if (recipients.length !== 1) return null
 
   return {
-    headline: `Sent ${formatAmount(paid.amount, paid.asset, ctx.tokens)} to ${truncateAddress(
-      recipients[0][0],
-    )}`,
+    parts: [
+      text('Sent '),
+      amountPart(paid.amount, paid.asset, ctx.tokens),
+      text(` to ${truncateAddress(recipients[0][0])}`),
+    ],
     details: [],
   }
 }
@@ -127,15 +132,19 @@ export const fallback: Matcher = (ctx) => {
   const { spent, gained } = senderMoves(ctx)
   if (spent.length === 0 && gained.length === 0) {
     return {
-      headline: 'No value moved',
+      parts: [text('No value moved')],
       details: ['This transaction changed contract state without moving any tokens or ETH.'],
     }
   }
-  const parts: string[] = []
-  for (const item of spent) parts.push(`-${formatAmount(item.amount, item.asset, ctx.tokens)}`)
-  for (const item of gained) parts.push(`+${formatAmount(item.amount, item.asset, ctx.tokens)}`)
+  const moves = [
+    ...spent.map((item) => [text('-'), amountPart(item.amount, item.asset, ctx.tokens)]),
+    ...gained.map((item) => [text('+'), amountPart(item.amount, item.asset, ctx.tokens)]),
+  ]
   return {
-    headline: `Net change for the sender: ${parts.join(', ')}`,
+    parts: [
+      text('Net change for the sender: '),
+      ...moves.flatMap((move, index) => (index === 0 ? move : [text(', '), ...move])),
+    ],
     details: ['No known pattern matched, so this is a plain summary of the flows.'],
   }
 }

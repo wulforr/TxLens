@@ -50,3 +50,64 @@ export function formatUnits(amount: bigint, decimals: number): string {
   const trimmed = fractionText.slice(0, 6)
   return `${negative ? '-' : ''}${wholeText}.${trimmed}`
 }
+
+/**
+ * A narrative headline, as renderable pieces. Amounts are structured so the UI
+ * can put a token chip (icon + symbol) next to the number — a plain string
+ * cannot, and a symbol like "01" rendered as text reads as part of the number.
+ */
+export type NarrativePart =
+  | { kind: 'text'; text: string }
+  | {
+      kind: 'amount'
+      /** The same string formatAmount produces, used for the plain headline. */
+      text: string
+      value: string
+      symbol: string
+      iconUrl: string | null
+      address: string | null
+      /** Decimals unknown: value is in raw units. */
+      raw: boolean
+    }
+
+export const text = (value: string): NarrativePart => ({ kind: 'text', text: value })
+
+export function amountPart(
+  amount: bigint,
+  asset: AssetRef,
+  tokens: Map<string, TokenMeta>,
+  nativeSymbol = 'ETH',
+): NarrativePart {
+  const full = formatAmount(amount, asset, tokens, nativeSymbol)
+  if (asset.kind === 'native') {
+    return {
+      kind: 'amount',
+      text: full,
+      value: formatUnits(amount, 18),
+      symbol: nativeSymbol,
+      iconUrl: null,
+      address: null,
+      raw: false,
+    }
+  }
+  const meta = tokens.get(assetKey(asset))
+  const symbol = meta?.symbol ?? truncateAddress(asset.address)
+  const base = {
+    kind: 'amount' as const,
+    text: full,
+    symbol,
+    iconUrl: meta?.iconUrl ?? null,
+    address: asset.address,
+  }
+  if (asset.kind === 'nft') return { ...base, value: `#${asset.tokenId}`, raw: false }
+  const raw = meta?.decimals === null || meta?.decimals === undefined
+  return {
+    ...base,
+    value: raw ? amount.toString() : formatUnits(amount, meta.decimals as number),
+    raw,
+  }
+}
+
+export function partsToText(parts: NarrativePart[]): string {
+  return parts.map((part) => part.text).join('')
+}

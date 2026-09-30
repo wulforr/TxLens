@@ -102,6 +102,29 @@ describe('narrate', () => {
     expect(result.headline).toBe('Swapped 935.11816 USDT for 2,336.944687 01')
   })
 
+  it('keeps each amount structured so a symbol like "01" never reads as digits', () => {
+    const withIcon = new Map(tokens)
+    withIcon.set(`erc20:${USDT}`, {
+      ...tokens.get(`erc20:${USDT}`)!,
+      iconUrl: 'https://i.example/usdt.png',
+    })
+    const result = narrate(
+      ctx(
+        [
+          edge(ALICE, ROUTER, 935118160n, usdtAsset),
+          edge(ROUTER, MAKER, 932312806n, usdtAsset),
+          edge(MAKER, ALICE, 2336944687482834621909n, coinAsset),
+        ],
+        { tokens: withIcon },
+      ),
+    )
+    const amounts = result.parts.filter((p) => p.kind === 'amount')
+    expect(amounts).toMatchObject([
+      { value: '935.11816', symbol: 'USDT', iconUrl: 'https://i.example/usdt.png' },
+      { value: '2,336.944687', symbol: '01', iconUrl: null, address: COIN },
+    ])
+  })
+
   it('names the router fee as a detail', () => {
     const result = narrate(
       ctx([

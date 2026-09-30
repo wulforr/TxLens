@@ -5,6 +5,7 @@ import { toWire } from '~~/shared/wire'
 const EXTRA = {
   narrative: {
     headline: 'No value moved',
+    parts: [{ kind: 'text' as const, text: 'No value moved' }],
     details: [],
     matcher: 'fallback',
     confidence: 'high' as const,

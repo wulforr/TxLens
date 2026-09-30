@@ -1,3 +1,4 @@
+import { partsToText, text } from '~~/shared/format'
 import * as matchers from './matchers'
 import type { Matcher, Narrative, NarrativeContext } from './types'
 
@@ -24,6 +25,7 @@ export function narrate(ctx: NarrativeContext): Narrative {
     if (!result) continue
     return {
       ...result,
+      headline: partsToText(result.parts),
       matcher: name,
       // A story computed over a partial event list may simply be wrong.
       confidence: incomplete ? 'low' : 'high',
@@ -35,6 +37,7 @@ export function narrate(ctx: NarrativeContext): Narrative {
   // into the UI.
   return {
     headline: 'Could not summarise this transaction',
+    parts: [text('Could not summarise this transaction')],
     details: [],
     matcher: 'none',
     confidence: 'low',

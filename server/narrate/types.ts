@@ -3,6 +3,7 @@ import type { DecodedLog } from '~~/server/decode/logs'
 import type { FlowEdge } from '~~/server/flow/build'
 import type { Positions } from '~~/server/flow/positions'
 import type { TokenMeta } from '~~/server/tokens/metadata'
+import type { NarrativePart } from '~~/shared/format'
 import type { RawTransaction } from '~~/shared/types'
 
 export interface NarrativeContext {
@@ -16,11 +17,15 @@ export interface NarrativeContext {
 }
 
 export interface Narrative {
+  /** Plain-text form of `parts`, for titles, tests, and anything that wants a string. */
   headline: string
+  parts: NarrativePart[]
   details: string[]
   matcher: string
   /** `low` when the underlying read was incomplete, so the story may be wrong. */
   confidence: 'high' | 'low'
 }
 
-export type Matcher = (ctx: NarrativeContext) => Omit<Narrative, 'matcher' | 'confidence'> | null
+export type Matcher = (
+  ctx: NarrativeContext,
+) => { parts: NarrativePart[]; details: string[] } | null

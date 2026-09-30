@@ -6,6 +6,7 @@ import CallActivity from '~~/app/components/CallActivity.vue'
 import CallRow from '~~/app/components/CallRow.vue'
 import Narrative from '~~/app/components/Narrative.vue'
 import ProvenanceChip from '~~/app/components/ProvenanceChip.vue'
+import TokenBadge from '~~/app/components/TokenBadge.vue'
 
 describe('ProvenanceChip', () => {
   it('names the degraded source plainly', () => {
@@ -135,28 +136,75 @@ describe('ArgValue', () => {
 describe('Narrative', () => {
   const base = {
     headline: 'Swapped 935.11816 USDT for 2,336.944687 01',
+    parts: [
+      { kind: 'text' as const, text: 'Swapped ' },
+      {
+        kind: 'amount' as const,
+        text: '935.11816 USDT',
+        value: '935.11816',
+        symbol: 'USDT',
+        iconUrl: 'https://i.example/usdt.png',
+        address: '0xdac17f958d2ee523a2206206994597c13d831ec7',
+        raw: false,
+      },
+      { kind: 'text' as const, text: ' for ' },
+      {
+        kind: 'amount' as const,
+        text: '2,336.944687 01',
+        value: '2,336.944687',
+        symbol: '01',
+        iconUrl: null,
+        address: '0x32708538a107253b51a735a724330a23106ca4ca',
+        raw: false,
+      },
+    ],
     details: ['0x222222…222222 kept 2.805354 USDT as a fee.'],
     matcher: 'swap',
     confidence: 'high' as const,
   }
 
   it('leads with the headline', () => {
-    const wrapper = mount(Narrative, { props: { narrative: base } })
-    expect(wrapper.find('h1').text()).toBe(base.headline)
+    const wrapper = mount(Narrative, {
+      props: { narrative: base },
+      global: { components: { TokenBadge } },
+    })
+    expect(wrapper.find('h1').attributes('aria-label')).toBe(base.headline)
+  })
+
+  it('renders each token as a chip with its icon, or a lettered disc without one', () => {
+    const wrapper = mount(Narrative, {
+      props: { narrative: base },
+      global: { components: { TokenBadge } },
+    })
+    const amounts = wrapper.findAll('.amount')
+    expect(amounts).toHaveLength(2)
+    expect(amounts[0].find('img').attributes('src')).toBe('https://i.example/usdt.png')
+    expect(amounts[1].find('img').exists()).toBe(false)
+    expect(amounts[1].find('.fallback').text()).toBe('0')
+    expect(amounts[1].find('.symbol').text()).toBe('01')
   })
 
   it('lists the supporting details', () => {
-    const wrapper = mount(Narrative, { props: { narrative: base } })
+    const wrapper = mount(Narrative, {
+      props: { narrative: base },
+      global: { components: { TokenBadge } },
+    })
     expect(wrapper.findAll('li')).toHaveLength(1)
   })
 
   it('warns when the summary was computed from incomplete data', () => {
-    const wrapper = mount(Narrative, { props: { narrative: { ...base, confidence: 'low' } } })
+    const wrapper = mount(Narrative, {
+      props: { narrative: { ...base, confidence: 'low' } },
+      global: { components: { TokenBadge } },
+    })
     expect(wrapper.text()).toContain('may be wrong')
   })
 
   it('shows no warning at high confidence', () => {
-    const wrapper = mount(Narrative, { props: { narrative: base } })
+    const wrapper = mount(Narrative, {
+      props: { narrative: base },
+      global: { components: { TokenBadge } },
+    })
     expect(wrapper.text()).not.toContain('may be wrong')
   })
 })
