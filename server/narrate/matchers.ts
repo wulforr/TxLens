@@ -276,9 +276,63 @@ function rankByUsd(ctx: NarrativeContext) {
   return rows.sort((a, b) => b.usd - a.usd)
 }
 
+/** Amount parts joined as prose: "A", "A and B", "A, B and C". */
+function amountList(ctx: NarrativeContext, items: { asset: AssetRef; amount: bigint }[]) {
+  return items.flatMap((item, index) => [
+    ...(index === 0 ? [] : [text(index === items.length - 1 ? ' and ' : ', ')]),
+    amountPart(item.amount, item.asset, ctx.tokens),
+  ])
+}
+
+const LISTED = 3
+
+/**
+ * The sender only paid out, to more than one address: payroll, a payment plus
+ * a fee, an airdrop, a bridge deposit split with its fee. Say what went out
+ * and name the biggest recipients; the steps list every one.
+ */
+export const sentToSeveral: Matcher = (ctx) => {
+  const { spent, gained } = senderMoves(ctx)
+  if (spent.length === 0 || gained.length !== 0) return null
+  const keys = new Set(spent.map((item) => assetKey(item.asset)))
+  const assets = new Map(spent.map((item) => [assetKey(item.asset), item.asset]))
+  const received = [...ctx.positions.entries()].flatMap(([address, p]) =>
+    address === ctx.sender || isZeroAddress(address)
+      ? []
+      : [...p.entries()]
+          .filter(([key, net]) => keys.has(key) && net > 0n)
+          .map(([key, net]) => ({ address, asset: assets.get(key) as AssetRef, amount: net })),
+  )
+  const recipients = new Set(received.map((r) => r.address))
+  if (recipients.size < 2) return null
+
+  // Biggest first, by value where priced, else by raw amount within an asset.
+  const ranked = received.sort((a, b) => {
+    const ua = usdOf(ctx, a.asset, a.amount) ?? -1
+    const ub = usdOf(ctx, b.asset, b.amount) ?? -1
+    return ub - ua || (b.amount > a.amount ? 1 : -1)
+  })
+  const details = ranked
+    .slice(0, LISTED)
+    .map(
+      (r) =>
+        `${capitalise(nameOf(ctx, r.address))} got ${formatAmount(r.amount, r.asset, ctx.tokens)}.`,
+    )
+  if (ranked.length > LISTED)
+    details.push(`And ${ranked.length - LISTED} more; every one is in the steps.`)
+  return {
+    parts: [
+      text(`${subject(ctx)} sent `),
+      ...amountList(ctx, spent),
+      text(`, split between ${recipients.size} addresses`),
+    ],
+    details,
+  }
+}
+
 export const received: Matcher = (ctx) => {
   const { spent, gained } = senderMoves(ctx)
-  if (spent.length !== 0 || gained.length !== 1) return null
+  if (spent.length !== 0 || gained.length === 0) return null
   const got = gained[0]
 
   // Who it came from: the biggest loser by value when we can price things,
@@ -296,7 +350,7 @@ export const received: Matcher = (ctx) => {
   return {
     parts: [
       text(`${subject(ctx)} received `),
-      amountPart(got.amount, got.asset, ctx.tokens),
+      ...amountList(ctx, gained),
       ...(source ? [text(` from ${nameOf(ctx, source)}`)] : []),
     ],
     details: [],

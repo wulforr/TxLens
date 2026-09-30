@@ -379,6 +379,24 @@ describe('narrate', () => {
     expect(result.details).toContain('Also got back 0.000472 ETH.')
   })
 
+  it('describes a payment split between several addresses, biggest first', () => {
+    const FEE = '0x9999999999999999999999999999999999999999'
+    const result = narrate(
+      ctx([edge(ALICE, MAKER, 500000000n, usdtAsset), edge(ALICE, FEE, 851600n, usdtAsset)]),
+    )
+    expect(result.matcher).toBe('sentToSeveral')
+    expect(result.headline).toBe('The sender sent 500.8516 USDT, split between 2 addresses')
+    expect(result.details[0]).toBe('0x333333…333333 got 500 USDT.')
+  })
+
+  it('names every asset received, not just one', () => {
+    const result = narrate(
+      ctx([edge(MAKER, ALICE, 5000000n, usdtAsset), edge(MAKER, ALICE, 10n ** 18n, coinAsset)]),
+    )
+    expect(result.matcher).toBe('received')
+    expect(result.headline).toBe('The sender received 5 USDT and 1 01 from 0x333333…333333')
+  })
+
   it('says so plainly when no value moved', () => {
     const result = narrate(ctx([]))
     expect(result.headline).toBe('No value moved')

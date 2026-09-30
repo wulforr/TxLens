@@ -20,7 +20,7 @@ import { toWire } from '~~/shared/wire'
  * Bump whenever the payload shape or the decoding changes: old cached payloads
  * are then simply never read again, with no manual flush.
  */
-const CACHE_VERSION = 16
+const CACHE_VERSION = 17
 
 export default defineEventHandler(async (event) => {
   const parsed = parseTxRef(getRouterParam(event, 'chain'), getRouterParam(event, 'hash'))
@@ -69,7 +69,15 @@ export default defineEventHandler(async (event) => {
 
   // Participants that only appeared in a trace or a token event have no name
   // yet. Look them up, so the story says "Bybit Exploiter 1", not a hex string.
-  const unnamed = [...new Set(edges.flatMap((e) => [e.from, e.to]))].filter(
+  // Approval spenders too: "gave 0x1111…842a65 permission" should read "gave 1inch".
+  const spenders = logs.flatMap((log) =>
+    log.eventName === 'Approval' || log.eventName === 'ApprovalForAll'
+      ? log.args
+          .filter((arg) => arg.name === 'spender' || arg.name === 'operator')
+          .map((arg) => String(arg.value).toLowerCase())
+      : [],
+  )
+  const unnamed = [...new Set([...edges.flatMap((e) => [e.from, e.to]), ...spenders])].filter(
     (a) => !tx.names[a]?.name && a !== '0x0000000000000000000000000000000000000000',
   )
   if (unnamed.length > 0) {
