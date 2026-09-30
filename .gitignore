@@ -25,3 +25,7 @@ logs
 
 # Impeccable design-tool session state
 .impeccable/live/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+sweep-report.json

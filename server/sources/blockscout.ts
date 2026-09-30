@@ -13,6 +13,7 @@ import type {
   RawTransaction,
   SectionStatus,
 } from '~~/shared/types'
+import { SourceUnavailable } from './errors'
 
 interface BlockscoutAddress {
   hash: string
@@ -214,7 +215,12 @@ export async function fetchFromBlockscout(
   const base = `${chain.blockscoutBase}/api/v2/transactions/${hash}`
 
   const core = await http.getJson<BlockscoutTransaction>(base)
-  if (!core.ok) return null
+  // Only a real 404 (or 422, Blockscout's answer for a hash it can't parse)
+  // means "no such transaction". A 429, a 5xx or a timeout means "ask later".
+  if (!core.ok) {
+    if (core.status === 404 || core.status === 422) return null
+    throw new SourceUnavailable(`blockscout: ${core.reason}`)
+  }
 
   const [logsResult, internalResult] = await Promise.all([
     fetchPagedItems<BlockscoutLogItem>(http, `${base}/logs`),

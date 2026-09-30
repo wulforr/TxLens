@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createHttpClient } from '~~/server/utils/http'
 import { fakeHttp } from './helpers/fakeHttp'
 
 describe('fakeHttp', () => {
@@ -20,5 +21,31 @@ describe('fakeHttp', () => {
     await http.getJson('https://x.test/a')
     await http.getJson('https://x.test/b')
     expect(http.calls).toEqual(['https://x.test/a', 'https://x.test/b'])
+  })
+})
+
+describe('createHttpClient', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  const reply = (status: number, body: unknown = {}, headers: Record<string, string> = {}) =>
+    new Response(JSON.stringify(body), { status, headers })
+
+  it('retries a rate-limited request once, honouring Retry-After', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(reply(429, {}, { 'retry-after': '0.01' }))
+      .mockResolvedValueOnce(reply(200, { ok: 1 }))
+    vi.stubGlobal('fetch', fetch)
+    const result = await createHttpClient().getJson('https://x.test/a')
+    expect(result).toEqual({ ok: true, data: { ok: 1 } })
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not retry a real "not found"', async () => {
+    const fetch = vi.fn().mockResolvedValue(reply(404))
+    vi.stubGlobal('fetch', fetch)
+    const result = await createHttpClient().getJson('https://x.test/a')
+    expect(result.ok).toBe(false)
+    expect(fetch).toHaveBeenCalledTimes(1)
   })
 })

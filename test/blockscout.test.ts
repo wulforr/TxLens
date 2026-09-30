@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fetchAddressNames, fetchFromBlockscout } from '~~/server/sources/blockscout'
+import { SourceUnavailable } from '~~/server/sources/errors'
 import { getChain } from '~~/shared/chains'
 import fixture from './fixtures/blockscout/transfer.json'
 import { fakeHttp } from './helpers/fakeHttp'
@@ -21,6 +22,14 @@ describe('fetchFromBlockscout', () => {
   it('returns null when the transaction is not found', async () => {
     const result = await fetchFromBlockscout(fakeHttp({}), chain, hash)
     expect(result).toBeNull()
+  })
+
+  it('throws "unavailable" when rate-limited, instead of claiming the transaction is missing', async () => {
+    const busy = {
+      ...fakeHttp({}),
+      getJson: async () => ({ ok: false as const, status: 429, reason: 'http 429' }),
+    }
+    await expect(fetchFromBlockscout(busy, chain, hash)).rejects.toBeInstanceOf(SourceUnavailable)
   })
 
   it('maps core transaction fields', async () => {

@@ -8,7 +8,7 @@ import { reduceFlow } from '~~/server/flow/reduce'
 import { narrate } from '~~/server/narrate/registry'
 import { fetchUsdPrices } from '~~/server/prices/usd'
 import { fetchAddressNames } from '~~/server/sources/blockscout'
-import { fetchTransaction } from '~~/server/sources/registry'
+import { fetchTransaction, SourceUnavailable } from '~~/server/sources/registry'
 import { applyTrace, fetchTraceCalls } from '~~/server/sources/trace'
 import { createTokenResolver } from '~~/server/tokens/metadata'
 import { createHttpClient } from '~~/server/utils/http'
@@ -37,7 +37,14 @@ export default defineEventHandler(async (event) => {
   const cached = await store.getItem(cacheKey)
   if (cached) return cached as ReturnType<typeof toWire>
 
-  let tx = await fetchTransaction(http, chain, hash)
+  let tx: Awaited<ReturnType<typeof fetchTransaction>>
+  try {
+    tx = await fetchTransaction(http, chain, hash)
+  } catch (error) {
+    if (error instanceof SourceUnavailable)
+      throw createError({ statusCode: 503, statusMessage: 'data source unavailable' })
+    throw error
+  }
   if (!tx) {
     throw createError({ statusCode: 404, statusMessage: 'transaction not found' })
   }

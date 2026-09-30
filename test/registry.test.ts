@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { TxSource } from '~~/server/sources/registry'
-import { fetchTransaction } from '~~/server/sources/registry'
+import { fetchTransaction, SourceUnavailable } from '~~/server/sources/registry'
 import { getChain } from '~~/shared/chains'
 import type { RawTransaction } from '~~/shared/types'
 import { fakeHttp } from './helpers/fakeHttp'
@@ -67,7 +67,19 @@ describe('fetchTransaction', () => {
     expect(result?.sourceName).toBe('second')
   })
 
-  it('returns null when every source fails', async () => {
+  it('says "unavailable", not "not found", when a source failed rather than answered', async () => {
+    const throwing: TxSource = {
+      name: 'busy',
+      fetch: vi.fn(async () => {
+        throw new SourceUnavailable('http 429')
+      }),
+    }
+    await expect(
+      fetchTransaction(fakeHttp({}), chain, hash, [throwing, source('b', null)]),
+    ).rejects.toBeInstanceOf(SourceUnavailable)
+  })
+
+  it('returns null when every source answers "not found"', async () => {
     const result = await fetchTransaction(fakeHttp({}), chain, hash, [
       source('a', null),
       source('b', null),

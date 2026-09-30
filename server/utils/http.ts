@@ -34,17 +34,39 @@ export function withTimeout(http: HttpClient, ms: number): HttpClient {
  * Measured against eth.blockscout.com on 2026-09-10.
  */
 const DEFAULT_TIMEOUT_MS = 20_000
+const RETRY_DELAY_MS = 800
+const MAX_RETRY_DELAY_MS = 3_000
 
 export function createHttpClient(options: { timeoutMs?: number } = {}): HttpClient {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
 
+  // Free public APIs rate-limit in bursts. One retry after a short pause turns
+  // most 429s and 5xx blips into answers; more would only pile onto the limit.
   async function request<T>(url: string, init: RequestInit): Promise<HttpResult<T>> {
+    const first = await attempt<T>(url, init)
+    if (first.ok || !(first.status === null || first.status === 429 || first.status >= 500))
+      return first
+    await new Promise((resolve) => setTimeout(resolve, first.retryAfterMs ?? RETRY_DELAY_MS))
+    return attempt<T>(url, init)
+  }
+
+  async function attempt<T>(
+    url: string,
+    init: RequestInit,
+  ): Promise<HttpResult<T> & { retryAfterMs?: number }> {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeoutMs)
     try {
       const response = await fetch(url, { ...init, signal: controller.signal })
       if (!response.ok) {
-        return { ok: false, status: response.status, reason: `http ${response.status}` }
+        const retryAfter = Number(response.headers.get('retry-after'))
+        return {
+          ok: false,
+          status: response.status,
+          reason: `http ${response.status}`,
+          retryAfterMs:
+            retryAfter > 0 ? Math.min(retryAfter * 1000, MAX_RETRY_DELAY_MS) : undefined,
+        }
       }
       return { ok: true, data: (await response.json()) as T }
     } catch (error) {

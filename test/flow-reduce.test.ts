@@ -35,7 +35,7 @@ const CASES: Record<string, FlowEdge[]> = {
 }
 
 describe('reduceFlow', () => {
-  it('never changes any address net position, on any input', () => {
+  it('never changes any address net position, on the hand-picked shapes', () => {
     // The invariant the whole diagram rests on. If a reduction can move
     // someone's net, the picture is lying and no amount of prettiness helps.
     for (const [name, edges] of Object.entries(CASES)) {
@@ -100,6 +100,38 @@ describe('reduceFlow', () => {
         .edges.map((edge) => edge.order)
         .sort(),
     ).toEqual([0, 2])
+  })
+
+  it('never changes any address net position, on thousands of random flows', () => {
+    // The hand-picked cases above cover the shapes we thought of; random flows
+    // cover the ones we didn't. Few addresses and repeated amounts on purpose,
+    // so conduits, round trips, cycles and self-transfers turn up often.
+    let seed = 7
+    const random = (n: number) => {
+      seed = (seed * 1664525 + 1013904223) % 2 ** 32
+      return Math.floor((seed / 2 ** 32) * n)
+    }
+    const people = [A, B, C, D, '0x5555555555555555555555555555555555555555']
+    const assets = [NATIVE, USDT]
+    const amounts = [0n, 1n, 3n, 40n, 100n, 100n, 1_000_000n, 2n ** 200n]
+    for (let run = 0; run < 3000; run++) {
+      const edges = Array.from({ length: random(12) }, () =>
+        e(
+          people[random(people.length)] as string,
+          people[random(people.length)] as string,
+          amounts[random(amounts.length)] as bigint,
+          assets[random(assets.length)],
+        ),
+      )
+      const before = netPositions(edges)
+      const reduced = reduceFlow(edges).edges
+      expect(
+        positionsEqual(before, netPositions(reduced)),
+        JSON.stringify(edges, (_, v) => (typeof v === 'bigint' ? v.toString() : v)),
+      ).toBe(true)
+      // And reducing again changes nothing.
+      expect(positionsEqual(before, netPositions(reduceFlow(reduced).edges))).toBe(true)
+    }
   })
 
   it('is idempotent', () => {
