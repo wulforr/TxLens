@@ -102,6 +102,15 @@ dd {
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
+@media (max-width: 480px) {
+  .args {
+    grid-template-columns: 1fr;
+    gap: 0.1rem;
+  }
+  dd + dt {
+    margin-top: 0.5rem;
+  }
+}
 .via {
   margin: 0.5rem 0 0;
   font-size: 0.75rem;

@@ -24,6 +24,9 @@ const blockNumber = computed(() => BigInt(props.data.blockNumber).toLocaleString
       <span class="title">Technical details</span>
       <span class="hint">the raw calls and events, for developers</span>
     </summary>
+    <!-- The summary is a button to assistive tech, so the section's own heading
+         lives here; it keeps the h3s below out of "Who's involved". -->
+    <h2 class="sr-only">Technical details</h2>
 
     <dl class="facts">
       <dt>Data source</dt>
@@ -151,6 +154,15 @@ dd {
   margin: 0;
   font-size: 0.85rem;
   min-width: 0;
+}
+@media (max-width: 480px) {
+  .facts {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+  dd + dt {
+    margin-top: 0.6rem;
+  }
 }
 h3 {
   font-size: 0.8rem;

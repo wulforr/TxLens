@@ -91,6 +91,13 @@ button.primary:hover {
   background: transparent;
   border: 1px solid transparent;
 }
+/* Fingers need a bigger target than a cursor does. */
+@media (pointer: coarse) {
+  .icon {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
 .icon:hover {
   color: var(--text);
   border-color: var(--line);

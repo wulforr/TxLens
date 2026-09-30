@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { truncateAddress } from '~~/shared/address'
 import type { Participant } from '~~/shared/steps'
 
@@ -11,20 +10,6 @@ function hint(person: Participant): string | null {
   if (person.isContract === true) return 'A program running on Ethereum'
   if (person.isContract === false) return 'An ordinary account, held by a person or company'
   return null
-}
-
-const copied = ref<string | null>(null)
-let timer: ReturnType<typeof setTimeout> | undefined
-
-async function copy(address: string) {
-  try {
-    await navigator.clipboard.writeText(address)
-    copied.value = address
-    clearTimeout(timer)
-    timer = setTimeout(() => (copied.value = null), 2000)
-  } catch {
-    // Clipboard can be blocked (insecure origin, permissions); the address stays selectable.
-  }
 }
 </script>
 
@@ -38,14 +23,7 @@ async function copy(address: string) {
         </span>
         <code class="address">{{ truncateAddress(person.address) }}</code>
         <span class="actions">
-          <button
-            type="button"
-            class="icon"
-            :aria-label="`Copy the full address of ${person.label}`"
-            @click="copy(person.address)"
-          >
-            <Icon :name="copied === person.address ? 'check' : 'copy'" />
-          </button>
+          <CopyButton :value="person.address" :label="`Copy the full address of ${person.label}`" />
           <a
             class="icon"
             :href="`${explorerBase}/address/${person.address}`"
@@ -58,7 +36,6 @@ async function copy(address: string) {
         </span>
       </li>
     </ul>
-    <p class="sr-only" aria-live="polite">{{ copied ? 'Address copied' : '' }}</p>
   </div>
 </template>
 
@@ -68,14 +45,17 @@ async function copy(address: string) {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.1rem;
+  /* One shared set of columns, so every address and its actions line up. */
+  grid-template-columns: minmax(0, max-content) auto auto;
+  justify-content: start;
+  column-gap: 1.25rem;
 }
 li {
-  display: flex;
-  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: 0.35rem 1rem;
-  padding: 0.4rem 0;
+  padding: 0.45rem 0;
   font-size: 0.9rem;
 }
 .who {
@@ -91,10 +71,25 @@ li {
   color: var(--text-faint);
   font-size: 0.8rem;
 }
-/* Right beside the address they act on, not pushed to the far edge. */
 .actions {
   display: inline-flex;
-  gap: 0.1rem;
-  margin-left: -0.5rem;
+  gap: 0.25rem;
+  margin-left: -0.75rem;
+}
+/* Narrow screens: name on its own line, address and actions underneath. */
+@media (max-width: 560px) {
+  .people {
+    grid-template-columns: auto 1fr;
+    column-gap: 1rem;
+  }
+  .who {
+    grid-column: 1 / -1;
+  }
+  .address {
+    padding-left: 1.4em;
+  }
+  .actions {
+    margin-left: 0;
+  }
 }
 </style>

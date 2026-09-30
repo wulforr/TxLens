@@ -17,6 +17,10 @@ function nameOf(ctx: NarrativeContext, address: string): string {
   return truncateAddress(address)
 }
 
+/** Contract-supplied text is hostile input: cap it before it reaches the page. */
+const capped = (value: string, max = 160) =>
+  value.length > max ? `${value.slice(0, max - 1)}…` : value
+
 const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
 
 /** "A", "A and B", "A, B and C". */
@@ -53,7 +57,7 @@ export const failed: Matcher = (ctx) => {
     parts: [text('This transaction failed and was undone')],
     details: [
       ctx.tx.revertReason
-        ? `The contract’s reason: “${ctx.tx.revertReason}”.`
+        ? `The contract’s reason: “${capped(ctx.tx.revertReason)}”.`
         : 'The contract didn’t say why.',
       'Only the network fee was spent. It’s paid even when a transaction fails.',
     ],

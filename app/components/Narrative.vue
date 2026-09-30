@@ -48,7 +48,7 @@ const glossary = computed(() => {
 
 <template>
   <section class="narrative">
-    <h1 :aria-label="narrative.headline">
+    <h1>
       <template v-if="narrative.parts?.length">
         <template v-for="(part, index) in narrative.parts" :key="index">
           <template v-if="part.kind === 'text'">{{ part.text }}</template>

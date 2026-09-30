@@ -93,6 +93,13 @@ describe('narrate', () => {
     expect(result.details[0]).toContain('“INSUFFICIENT_OUTPUT_AMOUNT”')
   })
 
+  it('caps a contract-supplied revert reason before it reaches the page', () => {
+    const result = narrate(
+      ctx([], { tx: tx({ status: 'reverted', revertReason: 'x'.repeat(5000) }) }),
+    )
+    expect(result.details[0]?.length).toBeLessThan(200)
+  })
+
   it('describes a swap with both amounts and both symbols', () => {
     const result = narrate(
       ctx([

@@ -5,6 +5,7 @@ import AmountChip from '~~/app/components/AmountChip.vue'
 import ArgValue from '~~/app/components/ArgValue.vue'
 import CallActivity from '~~/app/components/CallActivity.vue'
 import CallRow from '~~/app/components/CallRow.vue'
+import CopyButton from '~~/app/components/CopyButton.vue'
 import HashForm from '~~/app/components/HashForm.vue'
 import Icon from '~~/app/components/Icon.vue'
 import Narrative from '~~/app/components/Narrative.vue'
@@ -15,7 +16,7 @@ import StepList from '~~/app/components/StepList.vue'
 import TokenBadge from '~~/app/components/TokenBadge.vue'
 import type { NarrativePart } from '~~/shared/format'
 
-config.global.components = { AmountChip, Icon, Party, TokenBadge, ArgValue }
+config.global.components = { AmountChip, Icon, Party, TokenBadge, ArgValue, CopyButton }
 
 describe('ProvenanceChip', () => {
   it('names the degraded source plainly', () => {
@@ -177,7 +178,10 @@ describe('Narrative', () => {
       props: { narrative: base },
       global: { components: { TokenBadge } },
     })
-    expect(wrapper.find('h1').attributes('aria-label')).toBe(base.headline)
+    // The visible text is what a screen reader hears, USD values included: an
+    // aria-label here would override it with the plain headline.
+    expect(wrapper.find('h1').attributes('aria-label')).toBeUndefined()
+    expect(wrapper.find('h1').text()).toContain('Swapped')
   })
 
   it('renders each token as a chip with its icon, or a generic coin when its symbol starts with a digit', () => {

@@ -36,8 +36,9 @@ const copy = computed(() => COPY[props.provenance])
 <style scoped>
 .chip {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.5ch;
+  gap: 0 0.5ch;
   font-family: var(--font-mono);
   font-size: 0.75rem;
   padding: 0.2rem 0.6rem;

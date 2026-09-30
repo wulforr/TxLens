@@ -80,6 +80,11 @@ function eth(value: string): string {
   color: var(--text-faint);
   min-width: 13ch;
 }
+@media (max-width: 480px) {
+  .kind {
+    min-width: 0;
+  }
+}
 .arrow {
   color: var(--text-faint);
 }

@@ -189,7 +189,10 @@ useHead({
         <h2 id="people-title">Who’s involved</h2>
         <PartyList :people="involved" :explorer-base="chain?.explorerBase ?? 'https://etherscan.io'" />
         <p class="txid">
-          Transaction ID <code :title="data.hash">{{ truncateAddress(data.hash, 10, 8) }}</code>
+          Transaction ID
+          <span class="txid-value">
+            <code :title="data.hash">{{ truncateAddress(data.hash, 10, 8) }}</code>
+            <CopyButton :value="data.hash" label="Copy the full transaction ID" />
           <a
             class="icon"
             :href="`${chain?.explorerBase ?? 'https://etherscan.io'}/tx/${data.hash}`"
@@ -199,6 +202,7 @@ useHead({
           >
             <Icon name="external" />
           </a>
+          </span>
         </p>
       </section>
 
@@ -254,13 +258,21 @@ h2 {
 }
 .txid {
   display: flex;
+  flex-wrap: wrap;
+  white-space: nowrap;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.25rem;
   margin: 1rem 0 0;
   font-size: 0.85rem;
   color: var(--text-dim);
 }
+.txid-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
 .txid code {
+  margin: 0 0.5rem 0 0.35rem;
   color: var(--text-faint);
   font-size: 0.8rem;
 }
