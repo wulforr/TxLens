@@ -177,6 +177,8 @@ useHead({
         <span v-if="Object.keys(data.prices).length">Dollar values use prices from that day</span>
       </p>
 
+      <FlowStrip v-if="steps.length" :steps="steps" :people="people" :sender="data.from" />
+
       <section aria-labelledby="steps-title">
         <h2 id="steps-title">Step by step</h2>
         <p

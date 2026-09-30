@@ -7,6 +7,7 @@ import ArgValue from '~~/app/components/ArgValue.vue'
 import CallActivity from '~~/app/components/CallActivity.vue'
 import CallRow from '~~/app/components/CallRow.vue'
 import CopyButton from '~~/app/components/CopyButton.vue'
+import FlowStrip from '~~/app/components/FlowStrip.vue'
 import HashForm from '~~/app/components/HashForm.vue'
 import Icon from '~~/app/components/Icon.vue'
 import Narrative from '~~/app/components/Narrative.vue'
@@ -400,6 +401,50 @@ describe('StepList', () => {
     })
     expect(wrapper.findAll('li')).toHaveLength(12)
     expect(wrapper.find('button.more').text()).toBe('Show all 20 steps')
+  })
+})
+
+describe('FlowStrip', () => {
+  const SENDER = '0xaaaa000000000000000000000000000000000001'
+  const A = '0xaaaa000000000000000000000000000000000002'
+  const B = '0xaaaa000000000000000000000000000000000003'
+  const people = {
+    [SENDER]: { address: SENDER, label: 'Sender', role: 'sender' as const },
+    [A]: { address: A, label: 'Router', role: 'named' as const },
+    [B]: { address: B, label: 'Pool', role: 'named' as const },
+  }
+  const amount = {
+    kind: 'amount' as const,
+    text: '1 ETH',
+    value: '1',
+    symbol: 'ETH',
+    iconUrl: null,
+    address: null,
+    raw: false,
+    assetKey: 'native',
+    units: '1',
+  }
+  const step = (from: string, to: string) => ({
+    from,
+    to,
+    kind: 'transfer' as const,
+    amount,
+    usd: null,
+    via: [],
+  })
+
+  it('draws sender, the services in between, and sender again', () => {
+    const text = mount(FlowStrip, {
+      props: { steps: [step(SENDER, A), step(A, B), step(B, SENDER)], people, sender: SENDER },
+    }).text()
+    expect(text.indexOf('Sender')).toBeLessThan(text.indexOf('Router'))
+    expect(text).toContain('Pool')
+    expect(text.lastIndexOf('Sender')).toBeGreaterThan(text.indexOf('Pool'))
+  })
+
+  it('stays away when the sender is in no step', () => {
+    const wrapper = mount(FlowStrip, { props: { steps: [step(A, B)], people, sender: SENDER } })
+    expect(wrapper.find('figure').exists()).toBe(false)
   })
 })
 
