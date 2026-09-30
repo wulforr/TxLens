@@ -12,11 +12,15 @@ defineProps<{
 </script>
 
 <template>
-  <!-- nowrap: a number must never be split from its token -->
-  <span class="amount" :title="part.address ?? part.symbol">
-    <span class="value">{{ part.value }}</span>
-    <TokenBadge class="token" :symbol="part.symbol" :icon-url="part.iconUrl" :size="size ?? 16" />
-    <span v-if="part.raw" class="raw">raw units</span>
+  <!--
+    nowrap: a number must never be split from its token. The {{ ' ' }} gaps
+    are for screen readers ("2,336.94 01", not "2,336.9401"); flex layout
+    ignores them, so nothing moves on screen.
+  -->
+  <span class="amount">
+    <span class="value">{{ part.value }}</span>{{ ' ' }}
+    <TokenBadge class="token" :symbol="part.symbol" :icon-url="part.iconUrl" :size="size ?? 16" />{{ ' ' }}
+    <span v-if="part.raw" class="raw">raw units</span>{{ ' ' }}
     <span v-if="usd != null" class="usd">{{ usdText(usd) }}</span>
     <span v-else-if="showMissingPrice && !part.raw" class="usd">no known price</span>
   </span>

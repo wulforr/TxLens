@@ -10,7 +10,13 @@ const id = `term-${useId().replace(/[^\w-]/g, '')}`
 </script>
 
 <template>
-  <button type="button" class="term" :popovertarget="id" :style="`anchor-name: --${id}`"><slot /></button>
+  <button
+    type="button"
+    class="term"
+    :popovertarget="id"
+    :aria-describedby="id"
+    :style="`anchor-name: --${id}`"
+  ><slot /></button>
   <span :id="id" popover class="definition" :style="`position-anchor: --${id}`">{{ definition }}</span>
 </template>
 
@@ -21,7 +27,9 @@ const id = `term-${useId().replace(/[^\w-]/g, '')}`
   background: none;
   border: 0;
   border-radius: 2px;
-  padding: 0;
+  /* A finger-sized target without moving the line: padding in, margin out. */
+  padding: 0.2em 0;
+  margin: -0.2em 0;
   text-decoration: underline dotted;
   text-decoration-color: var(--text-faint);
   text-underline-offset: 0.25em;

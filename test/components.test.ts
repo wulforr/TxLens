@@ -283,6 +283,8 @@ describe('Narrative USD', () => {
       },
     })
     expect(wrapper.find('.usd').text()).toBe('no known price')
+    // Heard as words with gaps, not "2,336.9401no known price".
+    expect(wrapper.text().replace(/\s+/g, ' ')).toContain('2,336.94 01 no known price')
   })
 })
 

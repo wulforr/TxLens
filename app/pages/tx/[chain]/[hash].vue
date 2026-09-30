@@ -137,7 +137,9 @@ useHead({
 
 <template>
   <div>
-    <div v-if="pending" class="loading" role="status" aria-live="polite">
+    <!-- Before the request starts (and in the server's HTML) there is neither
+         data nor error yet; show the skeleton then too, never a blank page. -->
+    <div v-if="pending || (!data && !error)" class="loading" role="status" aria-live="polite">
       <div class="skeleton headline" />
       <div class="skeleton line" />
       <div class="skeleton line short" />
