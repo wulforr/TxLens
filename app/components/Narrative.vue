@@ -12,37 +12,49 @@ const props = withDefaults(
     tokens?: Record<string, TokenMeta>
     prices?: Record<string, number>
     names?: Record<string, AddressInfo>
+    /** Every asset that moved, so tokens seen only in the steps are named too. */
+    assets?: string[]
   }>(),
-  { tokens: () => ({}), prices: () => ({}), names: () => ({}) },
+  { tokens: () => ({}), prices: () => ({}), names: () => ({}), assets: () => [] },
 )
 
+const GLOSSARY_LIMIT = 5
+
 /**
- * What the headline's currencies are, in words. A symbol like "01" or "USDT"
- * means nothing to a newcomer; its full name and what kind of thing it is does.
+ * What the currencies are, in words: the headline's first, then any others the
+ * steps mention. A symbol like "01" or "USDT" means nothing to a newcomer; its
+ * full name and what kind of thing it is does.
  */
 const glossary = computed(() => {
-  const seen = new Set<string>()
-  let native: string | null = null
+  const keys = [
+    ...(props.narrative.parts ?? []).flatMap((p) => (p.kind === 'amount' ? [p.assetKey] : [])),
+    ...props.assets,
+  ]
+  let native = false
   const tokens: string[] = []
-  for (const part of props.narrative.parts ?? []) {
-    if (part.kind !== 'amount' || seen.has(part.assetKey)) continue
-    seen.add(part.assetKey)
-    if (part.assetKey === 'native') {
-      native = part.symbol
+  for (const key of new Set(keys)) {
+    if (key === 'native') {
+      native = true
       continue
     }
+    const meta = props.tokens[key]
+    if (!meta?.symbol) continue
+    const symbol = meta.symbol
     // A token whose name only repeats its symbol ("01") often has a real name
-    // on its contract ("Coin01").
+    // on its contract ("Coin01"). Prefixes stay: in "Euler Pool: Dai Stablecoin"
+    // the prefix is the part that says what eDAI is.
     const differs = (value?: string | null) =>
-      value && value.toLowerCase() !== part.symbol.toLowerCase() ? value : null
-    const contractName = part.address ? props.names[part.address.toLowerCase()]?.name : null
-    const name =
-      differs(props.tokens[part.assetKey]?.name) ?? differs(contractName && humanize(contractName))
-    tokens.push(name ? `${part.symbol} (${name})` : part.symbol)
+      value && value.toLowerCase() !== symbol.toLowerCase() ? value : null
+    const contractName = props.names[meta.address.toLowerCase()]?.name
+    const name = differs(meta.name) ?? differs(contractName && humanize(contractName))
+    tokens.push(name ? `${symbol} (${name})` : symbol)
   }
+  const shown = tokens.slice(0, GLOSSARY_LIMIT)
+  const more = tokens.length - shown.length
+  if (more > 0) shown.push(`${more} more`)
   const list =
-    tokens.length <= 1 ? tokens.join('') : `${tokens.slice(0, -1).join(', ')} and ${tokens.at(-1)}`
-  return { native, tokens: list, plural: tokens.length > 1 }
+    shown.length <= 1 ? shown.join('') : `${shown.slice(0, -1).join(', ')} and ${shown.at(-1)}`
+  return { native: native ? 'ETH' : null, tokens: list, plural: tokens.length > 1 }
 })
 </script>
 

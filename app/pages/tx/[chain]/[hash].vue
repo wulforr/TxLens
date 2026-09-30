@@ -161,6 +161,7 @@ useHead({
         :tokens="data.tokens"
         :prices="data.prices"
         :names="data.names"
+        :assets="data.flow.map((edge) => edge.assetKey)"
       />
 
       <p class="summary">

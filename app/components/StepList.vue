@@ -44,6 +44,16 @@ const firstMention = computed(() => {
 })
 const first = (index: number, slot: string, address: string) =>
   firstMention.value.get(address) === `${index}:${slot}`
+
+/** Define "newly created" and "destroyed" once, where they first appear. */
+const firstOfKind = computed(() => ({
+  mint: visible.value.findIndex((s) => s.kind === 'mint'),
+  burn: visible.value.findIndex((s) => s.kind === 'burn'),
+}))
+const CREATED =
+  'The token’s own program made these; they didn’t exist before. The crypto word for this is “minting”.'
+const DESTROYED =
+  'Removed for good, so nobody holds them any more. The crypto word for this is “burning”.'
 </script>
 
 <template>
@@ -57,11 +67,15 @@ const first = (index: number, slot: string, address: string) =>
         <span class="n" aria-hidden="true">{{ index + 1 }}</span>
         <p>
           <template v-if="step.kind === 'mint'">
-            <AmountChip :part="step.amount as never" :usd="step.usd" /> was newly created and given
+            <AmountChip :part="step.amount as never" :usd="step.usd" /> was
+            <Term v-if="index === firstOfKind.mint" :definition="CREATED">newly created</Term>
+            <template v-else>newly created</template> and given
             to <Party :party="people[step.to]" :address="step.to" :describe="first(index, 'to', step.to)" />
           </template>
           <template v-else-if="step.kind === 'burn'">
-            <Party :party="people[step.from]" :address="step.from" :describe="first(index, 'from', step.from)" /> destroyed
+            <Party :party="people[step.from]" :address="step.from" :describe="first(index, 'from', step.from)" />
+{{ ' ' }}<Term v-if="index === firstOfKind.burn" :definition="DESTROYED">destroyed</Term>
+            <template v-else>destroyed</template>{{ ' ' }}
             <AmountChip :part="step.amount as never" :usd="step.usd" />
           </template>
           <template v-else>
