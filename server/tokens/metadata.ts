@@ -104,7 +104,13 @@ export function createTokenResolver(http: HttpClient, chain: ChainConfig): Token
       iconUrl: httpsOnly(result.data.icon_url),
     }
 
-    return curated ? { ...curated, iconUrl: upstream.iconUrl } : upstream
+    // The name is enrichment too: some curated entries only repeat the symbol
+    // ("USDT"), and the reader needs the words ("Tether").
+    const name =
+      curated?.name && curated.name !== curated.symbol
+        ? curated.name
+        : (upstream.name ?? curated?.name)
+    return curated ? { ...curated, name: name ?? null, iconUrl: upstream.iconUrl } : upstream
   }
 
   return {

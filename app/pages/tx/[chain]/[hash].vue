@@ -75,13 +75,13 @@ const involved = computed(() => {
 
 const when = computed(() =>
   data.value
-    ? new Date(data.value.timestamp * 1000).toLocaleString('en-GB', {
+    ? // The reader's own clock: "UTC" is one more thing to translate.
+      new Date(data.value.timestamp * 1000).toLocaleString(undefined, {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-        timeZone: 'UTC',
         timeZoneName: 'short',
       })
     : '',
@@ -146,14 +146,24 @@ useHead({
     </div>
 
     <article v-else-if="data">
-      <Narrative :narrative="data.narrative" :tokens="data.tokens" :prices="data.prices" />
+      <Narrative
+        :narrative="data.narrative"
+        :tokens="data.tokens"
+        :prices="data.prices"
+        :names="data.names"
+      />
 
       <p class="summary">
         <span class="status" :data-status="data.status">
           {{ data.status === 'success' ? 'Succeeded' : 'Failed' }}
         </span>
         <span>{{ when }}</span>
-        <span>Network fee {{ fee }}</span>
+        <span>
+          <Term
+            definition="What the sender paid Ethereum’s network to process this transaction. It goes to the network, not to anyone in the steps below."
+          >Network fee</Term>
+          {{ fee }}
+        </span>
       </p>
 
       <section aria-labelledby="steps-title">

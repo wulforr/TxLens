@@ -5,6 +5,14 @@ import type { Participant } from '~~/shared/steps'
 
 defineProps<{ people: Participant[]; explorerBase: string }>()
 
+/** What each kind of participant is, for a reader who has never met one. */
+function hint(person: Participant): string | null {
+  if (person.role === 'sender') return 'Started and paid for this transaction'
+  if (person.isContract === true) return 'A program running on Ethereum'
+  if (person.isContract === false) return 'An ordinary account, held by a person or company'
+  return null
+}
+
 const copied = ref<string | null>(null)
 let timer: ReturnType<typeof setTimeout> | undefined
 
@@ -24,7 +32,10 @@ async function copy(address: string) {
   <div>
     <ul class="people">
       <li v-for="person in people" :key="person.address">
-        <Party :party="person" :address="person.address" />
+        <span class="who">
+          <Party :party="person" :address="person.address" />
+          <span v-if="hint(person)" class="hint">{{ hint(person) }}</span>
+        </span>
         <code class="address">{{ truncateAddress(person.address) }}</code>
         <span class="actions">
           <button
@@ -66,6 +77,15 @@ li {
   gap: 0.35rem 1rem;
   padding: 0.4rem 0;
   font-size: 0.9rem;
+}
+.who {
+  display: grid;
+  gap: 0.1rem;
+}
+.hint {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  padding-left: 1.1em;
 }
 .address {
   color: var(--text-faint);

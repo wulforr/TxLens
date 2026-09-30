@@ -36,6 +36,21 @@ describe('createTokenResolver', () => {
     expect(meta.iconUrl).toBe('https://assets.example/tether.png')
   })
 
+  it('takes the upstream name when the curated one only repeats the symbol', async () => {
+    const http = fakeHttp({
+      [tokenUrl(usdt)]: {
+        name: 'Tether',
+        symbol: 'USDT',
+        decimals: '6',
+        type: 'ERC-20',
+        icon_url: null,
+      },
+    })
+    const meta = await createTokenResolver(http, chain).forAddress(usdt)
+    expect(meta.symbol).toBe('USDT')
+    expect(meta.name).toBe('Tether')
+  })
+
   it('parses blockscout decimals, which arrive as a string', async () => {
     const http = fakeHttp({
       [tokenUrl(unknownToken)]: { name: '01', symbol: '01', decimals: '18', type: 'ERC-20' },

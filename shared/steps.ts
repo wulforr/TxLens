@@ -11,6 +11,8 @@ export interface Participant {
   address: string
   label: string
   role: Role
+  /** From the data source: a program (true), an ordinary account (false), or unknown. */
+  isContract?: boolean | null
 }
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
@@ -38,17 +40,24 @@ export function labelParticipants(
   for (const raw of addresses) {
     const address = raw.toLowerCase()
     if (out[address]) continue
+    const isContract = names[address]?.isContract ?? (tokenSymbols.has(address) ? true : null)
     if (address === ZERO_ADDRESS) {
       out[address] = { address, label: 'the zero address', role: 'zero' }
     } else if (address === sender.toLowerCase()) {
       out[address] = { address, label: 'Sender', role: 'sender' }
     } else if (names[address]?.name) {
-      out[address] = { address, label: humanize(names[address].name as string), role: 'named' }
+      out[address] = {
+        address,
+        label: humanize(names[address].name as string),
+        role: 'named',
+        isContract,
+      }
     } else if (tokenSymbols.get(address)) {
       out[address] = {
         address,
         label: `${tokenSymbols.get(address)} token contract`,
         role: 'named',
+        isContract,
       }
     } else {
       const kind = names[address]?.isContract
@@ -59,6 +68,7 @@ export function labelParticipants(
         address,
         label: `${prefix} ${n < LETTERS.length ? LETTERS[n] : n + 1}`,
         role: kind === true ? 'contract' : kind === false ? 'wallet' : 'unknown',
+        isContract,
       }
     }
   }
