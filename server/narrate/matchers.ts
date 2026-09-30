@@ -13,7 +13,7 @@ function nameOf(ctx: NarrativeContext, address: string): string {
   // exploit that is usually the attacker's own contract, and saying so reads
   // far better than a hex fragment.
   if (ctx.tx.to && address.toLowerCase() === ctx.tx.to.toLowerCase())
-    return 'the contract it called'
+    return 'the contract the sender called'
   return truncateAddress(address)
 }
 
@@ -47,13 +47,15 @@ function senderMoves(ctx: NarrativeContext) {
 export const failed: Matcher = (ctx) => {
   if (ctx.tx.status !== 'reverted') return null
   return {
-    parts: [
-      text(
-        ctx.tx.revertReason ? `Reverted: ${ctx.tx.revertReason}` : 'Reverted, with no reason given',
-      ),
-    ],
+    // Lead with the outcome in plain words. The contract's reason is often a
+    // developer string ("INSUFFICIENT_OUTPUT_AMOUNT"), so it goes underneath,
+    // quoted as the contract's own words rather than as our explanation.
+    parts: [text('This transaction failed and was undone')],
     details: [
-      'Nothing changed except the network fee, which is paid even when a transaction fails.',
+      ctx.tx.revertReason
+        ? `The contract’s reason: “${ctx.tx.revertReason}”.`
+        : 'The contract didn’t say why.',
+      'Only the network fee was spent. It’s paid even when a transaction fails.',
     ],
   }
 }
@@ -72,7 +74,11 @@ export const approval: Matcher = (ctx) => {
   const token = first.contractName ?? truncateAddress(first.address)
 
   return {
-    parts: [text(`Approved ${spender ? nameOf(ctx, spender) : 'a spender'} to move ${token}`)],
+    parts: [
+      text(
+        `Gave ${spender ? nameOf(ctx, spender) : 'another address'} permission to spend the sender’s ${token}`,
+      ),
+    ],
     details: approvals.length > 1 ? [`${approvals.length} approvals in this transaction.`] : [],
   }
 }
@@ -81,7 +87,11 @@ export const mint: Matcher = (ctx) => {
   const minted = ctx.edges.find((edge) => isZeroAddress(edge.from) && edge.to === ctx.sender)
   if (!minted) return null
   return {
-    parts: [text('Minted '), amountPart(minted.amount, minted.asset, ctx.tokens)],
+    parts: [
+      text('Created '),
+      amountPart(minted.amount, minted.asset, ctx.tokens),
+      text(' for the sender'),
+    ],
     details: [],
   }
 }
@@ -90,7 +100,7 @@ export const burn: Matcher = (ctx) => {
   const burned = ctx.edges.find((edge) => isZeroAddress(edge.to) && edge.from === ctx.sender)
   if (!burned) return null
   return {
-    parts: [text('Burned '), amountPart(burned.amount, burned.asset, ctx.tokens)],
+    parts: [text('Permanently destroyed '), amountPart(burned.amount, burned.asset, ctx.tokens)],
     details: [],
   }
 }
@@ -117,9 +127,9 @@ export const swap: Matcher = (ctx) => {
     }
   }
 
-  // The services the swap went through: contracts that emitted events, minus the
-  // token contracts themselves (already named in the headline) and anything we
-  // can't put a name to (a hex list tells a newcomer nothing).
+  // The services the money passed through, taken from the flow itself so every
+  // name here also appears in the steps. Token contracts (already in the
+  // headline) and unnamed addresses (a hex list tells a newcomer nothing) are left out.
   const tokenContracts = new Set(
     ctx.edges.flatMap((edge) =>
       edge.asset.kind === 'native' ? [] : [edge.asset.address.toLowerCase()],
@@ -127,13 +137,19 @@ export const swap: Matcher = (ctx) => {
   )
   const venues = [
     ...new Set(
-      ctx.logs
-        .map((log) => log.address.toLowerCase())
-        .filter((address) => !tokenContracts.has(address) && ctx.names?.[address]?.name)
+      ctx.edges
+        .flatMap((edge) => [edge.from, ...(edge.via ?? []), edge.to])
+        .map((address) => address.toLowerCase())
+        .filter(
+          (address) =>
+            address !== ctx.sender.toLowerCase() &&
+            !tokenContracts.has(address) &&
+            ctx.names?.[address]?.name,
+        )
         .map((address) => nameOf(ctx, address)),
     ),
   ]
-  if (venues.length > 0) details.push(`Went through ${listOf(venues.slice(0, 3))}.`)
+  if (venues.length > 0) details.push(`Passed through ${listOf(venues.slice(0, 3))}.`)
 
   return {
     parts: [
@@ -240,7 +256,9 @@ export const fallback: Matcher = (ctx) => {
         text('Net change for the sender: '),
         ...moves.flatMap((move, index) => (index === 0 ? move : [text(', '), ...move])),
       ],
-      details: ['No known pattern matched, so this is a plain summary of the flows.'],
+      details: [
+        'This didn’t match a pattern we recognise, so here is what the sender gained and lost.',
+      ],
     }
   }
 

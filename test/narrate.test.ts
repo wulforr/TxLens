@@ -88,7 +88,9 @@ describe('narrate', () => {
       }),
     )
     expect(result.matcher).toBe('failed')
-    expect(result.headline).toContain('INSUFFICIENT_OUTPUT_AMOUNT')
+    // The outcome leads in plain words; the developer string is quoted underneath.
+    expect(result.headline).toBe('This transaction failed and was undone')
+    expect(result.details[0]).toContain('“INSUFFICIENT_OUTPUT_AMOUNT”')
   })
 
   it('describes a swap with both amounts and both symbols', () => {
@@ -138,7 +140,7 @@ describe('narrate', () => {
     expect(result.details.join(' ')).toContain('fee')
   })
 
-  it('names the service taking the fee and the services the swap went through', () => {
+  it('names the service taking the fee and only the services the money passed through', () => {
     const POOL = '0x000000000004444c5dc75cb358380d2e3de08a90'
     const log = (address: string) =>
       ({
@@ -172,8 +174,9 @@ describe('narrate', () => {
     expect(result.details).toContain(
       'Transit Swap Router V5.1 kept 2.805354 USDT as a service fee.',
     )
-    // The token contracts are already in the headline; listing them again is noise.
-    expect(result.details).toContain('Went through Native RFQ Pool and Uniswap V4: Pool Manager.')
+    // Every name listed also appears in the steps: the pool only emitted an event,
+    // and the token contract is already in the headline.
+    expect(result.details).toContain('Passed through Transit Swap Router V5.1 and Native RFQ Pool.')
   })
 
   it('describes a plain transfer', () => {
@@ -194,7 +197,7 @@ describe('narrate', () => {
   it('describes a mint', () => {
     const result = narrate(ctx([edge(ZERO_ADDRESS, ALICE, 1000000n, usdtAsset)]))
     expect(result.matcher).toBe('mint')
-    expect(result.headline).toBe('Minted 1 USDT')
+    expect(result.headline).toBe('Created 1 USDT for the sender')
   })
 
   it('describes a burn', () => {
@@ -219,7 +222,7 @@ describe('narrate', () => {
     } as DecodedLog
     const result = narrate(ctx([], { logs: [approvalLog] }))
     expect(result.matcher).toBe('approval')
-    expect(result.headline).toContain('Approved')
+    expect(result.headline).toContain('permission to spend')
     expect(result.headline).toContain('USDT')
   })
 
@@ -258,6 +261,16 @@ describe('narrate', () => {
     expect(result.headline).toBe('Euler Exploit Contract 1 came out ahead by 8,000 USDT')
     expect(result.details).toContain('Euler Pool lost 8,001 USDT (≈ $8,001).')
     expect(result.details.join(' ')).toContain('sender’s own balance didn’t change')
+  })
+
+  it('calls an unnamed winner by its role, not by a pronoun', () => {
+    const POOL = '0x5555555555555555555555555555555555555555'
+    const result = narrate(
+      ctx([edge(POOL, ROUTER, 8000000000n, usdtAsset)], {
+        prices: new Map([[`erc20:${USDT}`, 1]]),
+      }),
+    )
+    expect(result.headline).toBe('The contract the sender called came out ahead by 8,000 USDT')
   })
 
   it('still describes movement without prices, rather than inventing a ranking', () => {
