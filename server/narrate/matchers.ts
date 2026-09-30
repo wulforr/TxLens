@@ -1,15 +1,23 @@
-import type { AssetRef } from '~~/server/flow/assets'
-import { assetKey, isZeroAddress } from '~~/server/flow/assets'
+import { type AssetRef, assetKey, isZeroAddress } from '~~/server/flow/assets'
 import { truncateAddress } from '~~/shared/address'
 import { amountPart, formatAmount, text } from '~~/shared/format'
 import { humanize } from '~~/shared/names'
+import { usdText } from '~~/shared/steps'
 import type { Matcher, NarrativeContext } from './types'
 
 /** A known name in words, or the shortened address. */
 function nameOf(ctx: NarrativeContext, address: string): string {
   const name = ctx.names?.[address.toLowerCase()]?.name
-  return name ? humanize(name) : truncateAddress(address)
+  if (name) return humanize(name)
+  // Unnamed, but we know its role: the contract the sender called. In an
+  // exploit that is usually the attacker's own contract, and saying so reads
+  // far better than a hex fragment.
+  if (ctx.tx.to && address.toLowerCase() === ctx.tx.to.toLowerCase())
+    return 'the contract it called'
+  return truncateAddress(address)
 }
+
+const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
 
 /** "A", "A and B", "A, B and C". */
 function listOf(items: string[]): string {
@@ -104,7 +112,7 @@ export const swap: Matcher = (ctx) => {
     const onlyAsset = [...assets.values()].filter((v) => v !== 0n).length === 1
     if (net > 0n && onlyAsset && net < paid.amount / 10n) {
       details.push(
-        `${nameOf(ctx, address)} kept ${formatAmount(net, paid.asset, ctx.tokens)} as a service fee.`,
+        `${capitalise(nameOf(ctx, address))} kept ${formatAmount(net, paid.asset, ctx.tokens)} as a service fee.`,
       )
     }
   }
@@ -158,23 +166,115 @@ export const transfer: Matcher = (ctx) => {
   }
 }
 
-export const fallback: Matcher = (ctx) => {
-  const { spent, gained } = senderMoves(ctx)
-  if (spent.length === 0 && gained.length === 0) {
-    return {
-      parts: [text('No value moved')],
-      details: ['This transaction changed contract state without moving any tokens or ETH.'],
+/**
+ * Each address's net change, valued in USD where the price and decimals are
+ * known, with the single asset that dominates it. The zero address is left out:
+ * it is where minted tokens come from and burned ones go, not a participant.
+ */
+function rankByUsd(ctx: NarrativeContext) {
+  const assets = new Map<string, AssetRef>()
+  for (const edge of ctx.edges) assets.set(assetKey(edge.asset), edge.asset)
+  const rows: {
+    address: string
+    usd: number
+    top: { asset: AssetRef; amount: bigint; usd: number }
+  }[] = []
+
+  for (const [address, positions] of ctx.positions) {
+    if (isZeroAddress(address)) continue
+    let usd = 0
+    let top: { asset: AssetRef; amount: bigint; usd: number } | null = null
+    for (const [key, net] of positions) {
+      const asset = assets.get(key)
+      const price = ctx.prices?.get(key)
+      if (!asset || net === 0n || price === undefined) continue
+      const decimals =
+        asset.kind === 'native' ? 18 : asset.kind === 'erc20' ? ctx.tokens.get(key)?.decimals : null
+      if (typeof decimals !== 'number') continue
+      const value = (Number(net) / 10 ** decimals) * price
+      usd += value
+      if (!top || Math.abs(value) > Math.abs(top.usd)) top = { asset, amount: net, usd: value }
     }
+    if (top) rows.push({ address, usd, top })
   }
-  const moves = [
-    ...spent.map((item) => [text('-'), amountPart(item.amount, item.asset, ctx.tokens)]),
-    ...gained.map((item) => [text('+'), amountPart(item.amount, item.asset, ctx.tokens)]),
-  ]
+  return rows.sort((a, b) => b.usd - a.usd)
+}
+
+export const received: Matcher = (ctx) => {
+  const { spent, gained } = senderMoves(ctx)
+  if (spent.length !== 0 || gained.length !== 1) return null
+  const got = gained[0]
+
+  // Who it came from: the biggest loser by value when we can price things,
+  // otherwise whoever lost the most of this same asset.
+  const byUsd = rankByUsd(ctx).filter((row) => row.address !== ctx.sender && row.usd < 0)
+  const key = assetKey(got.asset)
+  const bySameAsset = [...ctx.positions.entries()]
+    .filter(
+      ([address, p]) =>
+        address !== ctx.sender && !isZeroAddress(address) && (p.get(key) ?? 0n) < 0n,
+    )
+    .sort(([, a], [, b]) => ((a.get(key) ?? 0n) < (b.get(key) ?? 0n) ? -1 : 1))
+  const source = byUsd.at(-1)?.address ?? bySameAsset[0]?.[0]
+
   return {
     parts: [
-      text('Net change for the sender: '),
-      ...moves.flatMap((move, index) => (index === 0 ? move : [text(', '), ...move])),
+      text('Received '),
+      amountPart(got.amount, got.asset, ctx.tokens),
+      ...(source ? [text(` from ${nameOf(ctx, source)}`)] : []),
     ],
-    details: ['No known pattern matched, so this is a plain summary of the flows.'],
+    details: [],
+  }
+}
+
+export const fallback: Matcher = (ctx) => {
+  const { spent, gained } = senderMoves(ctx)
+
+  if (spent.length > 0 || gained.length > 0) {
+    const moves = [
+      ...spent.map((item) => [text('-'), amountPart(item.amount, item.asset, ctx.tokens)]),
+      ...gained.map((item) => [text('+'), amountPart(item.amount, item.asset, ctx.tokens)]),
+    ]
+    return {
+      parts: [
+        text('Net change for the sender: '),
+        ...moves.flatMap((move, index) => (index === 0 ? move : [text(', '), ...move])),
+      ],
+      details: ['No known pattern matched, so this is a plain summary of the flows.'],
+    }
+  }
+
+  const moving = ctx.edges.filter((edge) => edge.amount > 0n && edge.from !== edge.to)
+  if (moving.length === 0) {
+    return {
+      parts: [text('No value moved')],
+      details: ['This transaction only changed a setting or a record inside a contract.'],
+    }
+  }
+
+  // Value moved, but not in or out of the sender — the shape of an exploit,
+  // where the attacker's wallet calls a contract and the profit lands there.
+  // Saying "nothing moved" here would be false, so name who came out ahead.
+  const note = 'The sender’s own balance didn’t change — the value moved between other addresses.'
+  const ranked = rankByUsd(ctx)
+  const winner = ranked.find((row) => row.usd > 0 && row.top.amount > 0n)
+  if (!winner) {
+    const count = new Set(moving.flatMap((edge) => [edge.from, edge.to])).size
+    return { parts: [text(`Moved value between ${count} addresses`)], details: [note] }
+  }
+
+  const details = [note]
+  const loser = [...ranked].reverse().find((row) => row.usd < 0 && row.top.amount < 0n)
+  if (loser) {
+    details.unshift(
+      `${capitalise(nameOf(ctx, loser.address))} lost ${formatAmount(-loser.top.amount, loser.top.asset, ctx.tokens)} (${usdText(-loser.usd)}).`,
+    )
+  }
+  return {
+    parts: [
+      text(`${capitalise(nameOf(ctx, winner.address))} came out ahead by `),
+      amountPart(winner.top.amount, winner.top.asset, ctx.tokens),
+    ],
+    details,
   }
 }

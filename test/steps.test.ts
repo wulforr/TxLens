@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TokenMeta } from '~~/server/tokens/metadata'
-import { formatLogArg } from '~~/shared/format'
+import { formatLogArg, formatUnits } from '~~/shared/format'
 import { groupEvents, labelParticipants, partUsd, toSteps, usdText } from '~~/shared/steps'
 import type { WireFlowEdge } from '~~/shared/wire'
 
@@ -128,7 +128,9 @@ describe('toSteps', () => {
 describe('usdText', () => {
   it.each([
     [934.8412, '≈ $934.84'],
-    [1234567.8, '≈ $1,234,568'],
+    [1234567.8, '≈ $1.23 million'],
+    [1132901592, '≈ $1.13 billion'],
+    [45678.9, '≈ $45,679'],
     [0.004, '< $0.01'],
     [0.42, '≈ $0.42'],
   ])('%s -> %s', (value, expected) => {
@@ -172,5 +174,16 @@ describe('formatLogArg', () => {
   it('leaves other arguments and unknown tokens alone', () => {
     expect(formatLogArg(USDT, { name: 'tick', type: 'int24', value: '5' }, tokens)).toBeNull()
     expect(formatLogArg(ROUTER, { name: 'value', type: 'uint256', value: '5' }, tokens)).toBeNull()
+  })
+})
+
+describe('formatUnits at scale', () => {
+  it.each([
+    [50693552078053780000000000000000n, 18, '50.69 trillion'],
+    [1280655300000000000000000000n, 18, '1.28 billion'],
+    [8877507348306000000000000n, 18, '8,877,507.35'],
+    [1189321n, 8, '0.011893'],
+  ])('%s with %s decimals -> %s', (amount, decimals, expected) => {
+    expect(formatUnits(amount, decimals)).toBe(expected)
   })
 })

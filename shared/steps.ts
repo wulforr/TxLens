@@ -124,6 +124,9 @@ export function partUsd(
 
 export function usdText(value: number): string {
   if (value < 0.01) return '< $0.01'
+  // Big money reads as words: "$1.13 billion" lands, "$1,132,901,592" doesn't.
+  if (value >= 1e9) return `≈ $${(value / 1e9).toFixed(2).replace(/\.?0+$/, '')} billion`
+  if (value >= 1e6) return `≈ $${(value / 1e6).toFixed(2).replace(/\.?0+$/, '')} million`
   if (value >= 1000) return `≈ $${Math.round(value).toLocaleString('en-US')}`
   return `≈ $${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }

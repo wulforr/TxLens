@@ -14,6 +14,7 @@ export const MATCHERS: readonly { name: string; match: Matcher }[] = [
   { name: 'burn', match: matchers.burn },
   { name: 'swap', match: matchers.swap },
   { name: 'transfer', match: matchers.transfer },
+  { name: 'received', match: matchers.received },
   { name: 'fallback', match: matchers.fallback },
 ]
 

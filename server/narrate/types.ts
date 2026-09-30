@@ -16,6 +16,8 @@ export interface NarrativeContext {
   sender: Address
   /** Human names for addresses, when the source knew them. */
   names?: Record<string, AddressInfo>
+  /** assetKey -> USD per whole unit, when known. Used to rank winners and losers. */
+  prices?: Map<string, number>
 }
 
 export interface Narrative {

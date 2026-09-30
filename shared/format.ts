@@ -34,21 +34,45 @@ export function formatAmount(
   return `${formatUnits(amount, meta.decimals)} ${symbol}`
 }
 
-/** Fixed-point division with thousands separators and no trailing zero noise. */
+/**
+ * Fixed-point division with thousands separators, rounded, no trailing zeros.
+ * Precision follows size: two decimals once an amount reaches the thousands
+ * ("8,877,507.35 DAI", not "8,877,507.348306"), six below that so small token
+ * amounts like 0.011893 WBTC keep their meaning.
+ */
+const SCALES: [string, bigint][] = [
+  ['quadrillion', 10n ** 15n],
+  ['trillion', 10n ** 12n],
+  ['billion', 10n ** 9n],
+]
+
 export function formatUnits(amount: bigint, decimals: number): string {
   const negative = amount < 0n
   const absolute = negative ? -amount : amount
   const base = 10n ** BigInt(decimals)
-  const whole = absolute / base
-  const fraction = absolute % base
+  const sign = negative ? '-' : ''
 
-  const wholeText = whole.toLocaleString('en-US')
-  if (fraction === 0n) return `${negative ? '-' : ''}${wholeText}`
+  // Past a billion, digits stop meaning anything to a reader: "50.69 trillion"
+  // lands, "50,693,552,078,053.78" doesn't.
+  for (const [word, size] of SCALES) {
+    if (absolute / base >= size) {
+      const hundredths = (absolute * 100n + (size * base) / 2n) / (size * base)
+      const text =
+        `${hundredths / 100n}.${(hundredths % 100n).toString().padStart(2, '0')}`.replace(
+          /\.?0+$/,
+          '',
+        )
+      return `${sign}${text} ${word}`
+    }
+  }
 
-  const fractionText = fraction.toString().padStart(decimals, '0').replace(/0+$/, '')
-  // Six places is enough to be useful and short enough to read at a glance.
-  const trimmed = fractionText.slice(0, 6)
-  return `${negative ? '-' : ''}${wholeText}.${trimmed}`
+  const digits = Math.min(decimals, absolute / base >= 1000n ? 2 : 6)
+  const scale = 10n ** BigInt(digits)
+  const rounded = (absolute * scale + base / 2n) / base
+  const whole = (rounded / scale).toLocaleString('en-US')
+  const fraction =
+    digits > 0 ? (rounded % scale).toString().padStart(digits, '0').replace(/0+$/, '') : ''
+  return `${sign}${whole}${fraction ? `.${fraction}` : ''}`
 }
 
 /**

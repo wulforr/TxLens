@@ -100,7 +100,7 @@ describe('narrate', () => {
       ]),
     )
     expect(result.matcher).toBe('swap')
-    expect(result.headline).toBe('Swapped 935.11816 USDT for 2,336.944687 01')
+    expect(result.headline).toBe('Swapped 935.11816 USDT for 2,336.94 01')
   })
 
   it('keeps each amount structured so a symbol like "01" never reads as digits', () => {
@@ -122,7 +122,7 @@ describe('narrate', () => {
     const amounts = result.parts.filter((p) => p.kind === 'amount')
     expect(amounts).toMatchObject([
       { value: '935.11816', symbol: 'USDT', iconUrl: 'https://i.example/usdt.png' },
-      { value: '2,336.944687', symbol: '01', iconUrl: null, address: COIN },
+      { value: '2,336.94', symbol: '01', iconUrl: null, address: COIN },
     ])
   })
 
@@ -237,6 +237,45 @@ describe('narrate', () => {
       }),
     )
     expect(result.confidence).toBe('low')
+  })
+
+  it('never claims nothing moved when value moved between other addresses', () => {
+    // An exploit: the attacker's wallet calls a contract, and the profit lands in
+    // that contract. The wallet's own balance is unchanged; "no value moved"
+    // would be a false statement about a very expensive transaction.
+    const EXPLOIT = '0x4444444444444444444444444444444444444444'
+    const POOL = '0x5555555555555555555555555555555555555555'
+    const result = narrate(
+      ctx([edge(POOL, EXPLOIT, 8000000000n, usdtAsset), edge(POOL, MAKER, 1000000n, usdtAsset)], {
+        names: {
+          [EXPLOIT]: { name: 'Euler Exploit Contract 1', isContract: true },
+          [POOL]: { name: 'Euler Pool', isContract: true },
+        },
+        prices: new Map([[`erc20:${USDT}`, 1]]),
+      }),
+    )
+    expect(result.headline).not.toContain('No value moved')
+    expect(result.headline).toBe('Euler Exploit Contract 1 came out ahead by 8,000 USDT')
+    expect(result.details).toContain('Euler Pool lost 8,001 USDT (≈ $8,001).')
+    expect(result.details.join(' ')).toContain('sender’s own balance didn’t change')
+  })
+
+  it('still describes movement without prices, rather than inventing a ranking', () => {
+    const result = narrate(ctx([edge(MAKER, ROUTER, 5000000n, usdtAsset)], { prices: new Map() }))
+    expect(result.headline).not.toContain('No value moved')
+    expect(result.headline).toContain('2 addresses')
+  })
+
+  it('says where received value came from, valued by USD', () => {
+    const BRIDGE = '0x6666666666666666666666666666666666666666'
+    const result = narrate(
+      ctx([edge(BRIDGE, ALICE, 173600n * 10n ** 18n)], {
+        names: { [BRIDGE]: { name: 'Ronin Bridge V1', isContract: true } },
+        prices: new Map([['native', 3000]]),
+      }),
+    )
+    expect(result.matcher).toBe('received')
+    expect(result.headline).toBe('Received 173,600 ETH from Ronin Bridge V1')
   })
 
   it('says so plainly when no value moved', () => {
