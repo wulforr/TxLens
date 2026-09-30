@@ -357,6 +357,41 @@ describe('StepList', () => {
     expect(text).toContain('Contract A')
   })
 
+  it('leads with the sender’s own steps and folds the handoffs between services', async () => {
+    const SENDER = '0xaaaa000000000000000000000000000000000001'
+    const A = '0xaaaa000000000000000000000000000000000002'
+    const B = '0xaaaa000000000000000000000000000000000003'
+    const wrapper = mount(StepList, {
+      props: {
+        steps: [
+          step({ from: SENDER, to: A }),
+          step({ from: A, to: B }),
+          step({ from: B, to: SENDER }),
+        ],
+        people,
+        sender: SENDER,
+      },
+    })
+    expect(wrapper.findAll('li')).toHaveLength(2)
+    const toggle = wrapper.find('button.more')
+    expect(toggle.text()).toBe('Show how it got there (1 handoff between services)')
+    await toggle.trigger('click')
+    expect(wrapper.findAll('li')).toHaveLength(3)
+    expect(wrapper.findAll('li.handoff')).toHaveLength(1)
+  })
+
+  it('shows every step when the sender is in none of them', () => {
+    const wrapper = mount(StepList, {
+      props: {
+        steps: [step({ from: '0xaaaa000000000000000000000000000000000002' })],
+        people,
+        sender: '0xaaaa000000000000000000000000000000000009',
+      },
+    })
+    expect(wrapper.findAll('li')).toHaveLength(1)
+    expect(wrapper.find('button.more').exists()).toBe(false)
+  })
+
   it('caps a long list behind a button that says how many there are', () => {
     const wrapper = mount(StepList, {
       props: { steps: Array.from({ length: 20 }, () => step()), people },

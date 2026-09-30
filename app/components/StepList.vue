@@ -2,12 +2,31 @@
 import { computed, ref } from 'vue'
 import type { Participant, Step } from '~~/shared/steps'
 
-const props = defineProps<{ steps: Step[]; people: Record<string, Participant> }>()
+const props = defineProps<{
+  steps: Step[]
+  people: Record<string, Participant>
+  sender?: string
+}>()
+
+/**
+ * What the sender paid and got is the story; the hops between services in the
+ * middle are how it happened. Lead with the first and fold the second behind a
+ * button, unless the sender is in no step at all (then every step is the story).
+ */
+const isOwn = (step: Step) => {
+  const sender = props.sender?.toLowerCase()
+  return step.from.toLowerCase() === sender || step.to.toLowerCase() === sender
+}
+const own = computed(() => props.steps.filter(isOwn))
+const handoffs = computed(() => props.steps.length - own.value.length)
+const showHandoffs = ref(false)
+const foldable = computed(() => own.value.length > 0 && handoffs.value > 0)
+const shown = computed(() => (foldable.value && !showHandoffs.value ? own.value : props.steps))
 
 /** Enough to tell most stories; the rest is one click away, never hidden. */
 const LIMIT = 12
 const expanded = ref(false)
-const visible = computed(() => (expanded.value ? props.steps : props.steps.slice(0, LIMIT)))
+const visible = computed(() => (expanded.value ? shown.value : shown.value.slice(0, LIMIT)))
 
 /** Where each participant is first mentioned: only there does it say what it is. */
 const firstMention = computed(() => {
@@ -30,7 +49,11 @@ const first = (index: number, slot: string, address: string) =>
 <template>
   <div>
     <ol class="steps">
-      <li v-for="(step, index) in visible" :key="index">
+      <li
+        v-for="(step, index) in visible"
+        :key="index"
+        :class="{ handoff: foldable && showHandoffs && !isOwn(step) }"
+      >
         <span class="n" aria-hidden="true">{{ index + 1 }}</span>
         <p>
           <template v-if="step.kind === 'mint'">
@@ -57,13 +80,26 @@ const first = (index: number, slot: string, address: string) =>
       </li>
     </ol>
     <button
-      v-if="steps.length > LIMIT"
+      v-if="foldable"
+      type="button"
+      class="more"
+      :aria-expanded="showHandoffs"
+      @click="showHandoffs = !showHandoffs"
+    >
+      {{
+        showHandoffs
+          ? 'Show only the sender’s own steps'
+          : `Show how it got there (${handoffs} ${handoffs === 1 ? 'handoff' : 'handoffs'} between services)`
+      }}
+    </button>
+    <button
+      v-if="shown.length > LIMIT"
       type="button"
       class="more"
       :aria-expanded="expanded"
       @click="expanded = !expanded"
     >
-      {{ expanded ? 'Show fewer steps' : `Show all ${steps.length} steps` }}
+      {{ expanded ? 'Show fewer steps' : `Show all ${shown.length} steps` }}
     </button>
   </div>
 </template>
@@ -82,6 +118,11 @@ li {
   align-items: baseline;
   padding: 0.55rem 0;
   border-bottom: 1px solid var(--line);
+}
+/* A hop between services: part of how it happened, not what happened. */
+li.handoff p {
+  font-size: 0.925em;
+  opacity: 0.8;
 }
 li:last-child {
   border-bottom: 0;
@@ -102,6 +143,6 @@ p {
   line-height: 1.5;
 }
 .more {
-  margin-top: 0.75rem;
+  margin: 0.75rem 0.5rem 0 0;
 }
 </style>

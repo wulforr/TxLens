@@ -184,7 +184,7 @@ useHead({
         >
           Some of this transaction’s data couldn’t be read, so these steps may be incomplete.
         </p>
-        <StepList v-if="steps.length" :steps="steps" :people="people" />
+        <StepList v-if="steps.length" :steps="steps" :people="people" :sender="data.from" />
         <p v-else-if="data.status !== 'success'" class="empty">
           Nothing moved: the transaction failed, so every change it tried to make was undone.
         </p>
