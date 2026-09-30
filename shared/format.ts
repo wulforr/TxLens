@@ -111,3 +111,26 @@ export function amountPart(
 export function partsToText(parts: NarrativePart[]): string {
   return parts.map((part) => part.text).join('')
 }
+
+const AMOUNT_ARGS = new Set(['value', 'amount', 'wad'])
+
+/**
+ * Show an event's amount argument in real units when we know how: only for
+ * events the token contract itself emitted (Transfer, Approval, Deposit…) and
+ * only when its decimals are known. Anywhere else a bare integer could mean
+ * anything, so it is left alone rather than guessed at.
+ */
+export function formatLogArg(
+  logAddress: string,
+  arg: { name: string; type: string; value: string },
+  tokens: Record<string, TokenMeta>,
+): string | null {
+  if (!arg.type.startsWith('uint') || !AMOUNT_ARGS.has(arg.name)) return null
+  const meta = tokens[`erc20:${logAddress.toLowerCase()}`]
+  if (meta?.decimals === null || meta?.decimals === undefined) return null
+  try {
+    return `${formatUnits(BigInt(arg.value), meta.decimals)} ${meta.symbol ?? ''}`.trim()
+  } catch {
+    return null
+  }
+}
